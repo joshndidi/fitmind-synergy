@@ -1,9 +1,23 @@
 
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { useSubscription } from "../context/SubscriptionContext";
 import { useState } from "react";
+import { Button } from "./ui/button";
 
-const SubscriptionCard = () => {
+type SubscriptionPlan = {
+  id: string;
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: { text: string; available: boolean }[];
+};
+
+type SubscriptionCardProps = {
+  plan: SubscriptionPlan;
+};
+
+const SubscriptionCard = ({ plan }: SubscriptionCardProps) => {
   const { isActive, subscribe, cancel, loading, status, expiryDate } = useSubscription();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -25,14 +39,6 @@ const SubscriptionCard = () => {
     }
   };
 
-  const features = [
-    "AI-powered workout planning",
-    "Image-based calorie tracking",
-    "Personalized nutrition advice",
-    "Advanced performance analytics",
-    "Exclusive premium content",
-  ];
-
   const formatDate = (date: Date | null) => {
     if (!date) return "N/A";
     return new Date(date).toLocaleDateString("en-GB", {
@@ -43,23 +49,30 @@ const SubscriptionCard = () => {
   };
 
   return (
-    <div className="glass-card p-6 md:p-8">
+    <div className="glass-card p-6 md:p-8 max-w-md mx-auto">
       <div className="text-center mb-6">
         <span className="inline-block px-3 py-1 rounded-full bg-primary/30 text-primary text-xs font-medium mb-2">
-          Premium
+          {plan.name}
         </span>
         <h3 className="text-2xl font-bold text-text-light mb-2">FitMind Premium</h3>
         <div className="flex justify-center items-baseline">
-          <span className="text-3xl font-extrabold text-text-light">£5</span>
-          <span className="text-text-muted ml-1">/month</span>
+          <span className="text-3xl font-extrabold text-text-light">{plan.price}</span>
+          <span className="text-text-muted ml-1">/{plan.period}</span>
         </div>
+        <p className="text-text-muted mt-2">{plan.description}</p>
       </div>
 
       <ul className="space-y-3 mb-6">
-        {features.map((feature, index) => (
+        {plan.features.map((feature, index) => (
           <li key={index} className="flex items-center">
-            <Check className="h-5 w-5 text-primary mr-3 flex-shrink-0" />
-            <span className="text-text-light">{feature}</span>
+            {feature.available ? (
+              <Check className="h-5 w-5 text-primary mr-3 flex-shrink-0" />
+            ) : (
+              <X className="h-5 w-5 text-text-muted mr-3 flex-shrink-0" />
+            )}
+            <span className={feature.available ? "text-text-light" : "text-text-muted"}>
+              {feature.text}
+            </span>
           </li>
         ))}
       </ul>
@@ -69,22 +82,24 @@ const SubscriptionCard = () => {
           <p className="text-center text-text-muted text-sm">
             Your subscription is active until {formatDate(expiryDate)}
           </p>
-          <button
+          <Button
             onClick={handleCancel}
-            disabled={isProcessing}
-            className="btn-secondary w-full"
+            disabled={isProcessing || loading}
+            variant="outline"
+            className="w-full"
           >
-            {isProcessing ? "Processing..." : "Cancel Subscription"}
-          </button>
+            {isProcessing || loading ? "Processing..." : "Cancel Subscription"}
+          </Button>
         </div>
       ) : (
-        <button
+        <Button
           onClick={handleSubscribe}
-          disabled={isProcessing}
-          className="btn-primary w-full"
+          disabled={isProcessing || loading}
+          variant="default"
+          className="w-full bg-primary hover:bg-primary/90"
         >
-          {isProcessing ? "Processing..." : "Subscribe Now"}
-        </button>
+          {isProcessing || loading ? "Processing..." : "Subscribe Now"}
+        </Button>
       )}
     </div>
   );
