@@ -1,67 +1,70 @@
 
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dumbbell, Flame, Clock, BarChart3, Share2 } from "lucide-react";
+import { Dumbbell, Flame, Clock, BarChart3, Share2, ArrowLeft, Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-
-// Mock workout data
-const workouts = [
-  {
-    id: "1",
-    title: "Upper Strength",
-    description: "Focus on building upper body strength with compound movements",
-    calories: 450,
-    duration: 60,
-    intensity: "High",
-    exercises: [
-      { name: "Bench Press", sets: 4, reps: "8-10", weight: "70% 1RM" },
-      { name: "Pull-ups", sets: 4, reps: "8-10", weight: "Bodyweight" },
-      { name: "Overhead Press", sets: 3, reps: "10-12", weight: "60% 1RM" },
-      { name: "Bent-over Row", sets: 3, reps: "10-12", weight: "65% 1RM" },
-      { name: "Tricep Dips", sets: 3, reps: "12-15", weight: "Bodyweight" },
-      { name: "Bicep Curls", sets: 3, reps: "12-15", weight: "Light" }
-    ]
-  },
-  {
-    id: "2",
-    title: "Back Workout",
-    description: "Comprehensive back workout for strength and definition",
-    calories: 400,
-    duration: 55,
-    intensity: "Medium-High",
-    exercises: [
-      { name: "Deadlifts", sets: 4, reps: "6-8", weight: "75% 1RM" },
-      { name: "Lat Pulldowns", sets: 3, reps: "10-12", weight: "Medium" },
-      { name: "Seated Rows", sets: 3, reps: "10-12", weight: "Medium" },
-      { name: "Face Pulls", sets: 3, reps: "15-20", weight: "Light" },
-      { name: "Hyperextensions", sets: 3, reps: "12-15", weight: "Bodyweight" }
-    ]
-  }
-];
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkout } from "@/hooks/useWorkout";
 
 const WorkoutDisplay = () => {
   const { id } = useParams<{ id: string }>();
-  const [workout, setWorkout] = useState<(typeof workouts)[0] | null>(null);
+  const [workout, setWorkout] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeExercise, setActiveExercise] = useState<number | null>(null);
+  const [completedExercises, setCompletedExercises] = useState<number[]>([]);
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const { workouts } = useWorkout();
 
   useEffect(() => {
     // Simulate an API call to fetch workout data
     setLoading(true);
     setTimeout(() => {
-      const found = workouts.find(w => w.id === id) || null;
+      // First check if we can find the workout in the useWorkout hook
+      let found = workouts.find(w => w.id === id);
+      
+      // If not found in useWorkout, check the mock data
+      if (!found) {
+        found = mockWorkouts.find(w => w.id === id) || null;
+      }
+      
       setWorkout(found);
       setLoading(false);
     }, 1000);
-  }, [id]);
+  }, [id, workouts]);
 
   const handleStartWorkout = () => {
     toast.success(`Starting ${workout?.title}`);
+    // Set the first exercise as active when starting the workout
+    if (workout?.exercises && workout.exercises.length > 0) {
+      setActiveExercise(0);
+    }
   };
 
   const handleShare = () => {
     toast.success("Workout shared with friends");
+  };
+
+  const handleCompleteExercise = (index: number) => {
+    if (!completedExercises.includes(index)) {
+      setCompletedExercises([...completedExercises, index]);
+      toast.success(`Exercise completed!`);
+    }
+    
+    // Move to next exercise if available
+    if (workout?.exercises && index < workout.exercises.length - 1) {
+      setActiveExercise(index + 1);
+    } else if (workout?.exercises && index === workout.exercises.length - 1) {
+      // If this was the last exercise
+      setActiveExercise(null);
+      toast.success("Congratulations! Workout completed!");
+    }
+  };
+
+  const handleGoBack = () => {
+    navigate(-1);
   };
 
   if (loading) {
@@ -80,7 +83,7 @@ const WorkoutDisplay = () => {
             <Dumbbell className="h-16 w-16 text-text-muted opacity-20 mb-4" />
             <h2 className="text-2xl font-bold text-text-light mb-2">Workout Not Found</h2>
             <p className="text-text-muted mb-6">The workout you're looking for doesn't exist or has been removed.</p>
-            <Button className="bg-primary text-white" onClick={() => window.history.back()}>
+            <Button className="bg-primary text-white" onClick={handleGoBack}>
               Go Back
             </Button>
           </CardContent>
@@ -90,9 +93,17 @@ const WorkoutDisplay = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-text-light">{workout.title}</h1>
+    <div className="container mx-auto px-4 py-4 md:py-8 animate-fade-in">
+      <Button 
+        variant="ghost" 
+        className="mb-4 text-text-light hover:bg-white/5 -ml-2"
+        onClick={handleGoBack}
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" /> Back
+      </Button>
+      
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-text-light">{workout.title}</h1>
         <Button 
           variant="outline" 
           className="border-white/10 text-text-light hover:bg-white/5"
@@ -102,9 +113,9 @@ const WorkoutDisplay = () => {
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main workout info */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-6">
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="text-text-light">Workout Overview</CardTitle>
@@ -144,9 +155,18 @@ const WorkoutDisplay = () => {
                 </div>
               </div>
               
-              <Button className="w-full bg-primary text-white" onClick={handleStartWorkout}>
-                Start Workout
-              </Button>
+              {activeExercise === null ? (
+                <Button 
+                  className="w-full bg-primary text-white" 
+                  onClick={handleStartWorkout}
+                >
+                  Start Workout
+                </Button>
+              ) : (
+                <p className="text-center text-text-light mb-2">
+                  Workout in progress - complete each exercise
+                </p>
+              )}
             </CardContent>
           </Card>
           
@@ -156,26 +176,55 @@ const WorkoutDisplay = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {workout.exercises.map((exercise, index) => (
-                  <div key={index} className="glass-card p-4">
+                {workout.exercises.map((exercise: any, index: number) => (
+                  <div 
+                    key={index} 
+                    className={`glass-card p-4 transition-all duration-300 ${
+                      activeExercise === index ? 'ring-2 ring-primary' : 
+                      completedExercises.includes(index) ? 'bg-primary/5 border-primary/20' : ''
+                    }`}
+                  >
                     <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-medium text-text-light">{exercise.name}</h3>
+                      <div className="flex items-center">
+                        {completedExercises.includes(index) && (
+                          <div className="bg-primary/20 p-1 rounded-full mr-2">
+                            <Check className="h-4 w-4 text-primary" />
+                          </div>
+                        )}
+                        <h3 className="font-medium text-text-light">{exercise.name}</h3>
+                      </div>
                       <span className="text-sm text-primary">{exercise.weight}</span>
                     </div>
-                    <div className="flex items-center text-text-muted text-sm">
+                    <div className="flex items-center text-text-muted text-sm mb-3">
                       <span>{exercise.sets} sets</span>
                       <span className="mx-2">•</span>
                       <span>{exercise.reps} reps</span>
                     </div>
+                    
+                    {activeExercise === index && (
+                      <Button 
+                        className="w-full mt-2 bg-primary text-white"
+                        onClick={() => handleCompleteExercise(index)}
+                      >
+                        Complete Exercise
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
+              
+              {completedExercises.length === workout.exercises.length && workout.exercises.length > 0 && (
+                <div className="mt-6 p-4 bg-primary/10 rounded-lg text-center">
+                  <h3 className="font-bold text-primary mb-2">Workout Complete!</h3>
+                  <p className="text-text-light">Great job on finishing your workout.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
         
         {/* Sidebar */}
-        <div className="space-y-8">
+        <div className={`space-y-6 ${isMobile ? 'order-first lg:order-last' : ''}`}>
           <Card className="glass-card sticky top-4">
             <CardHeader>
               <CardTitle className="text-text-light">Quick Tips</CardTitle>
@@ -206,18 +255,20 @@ const WorkoutDisplay = () => {
               
               <div className="mt-6 pt-6 border-t border-white/10">
                 <h3 className="font-medium text-text-light mb-4">Similar Workouts</h3>
-                {workouts
-                  .filter(w => w.id !== id)
-                  .map((w, i) => (
-                    <Button 
-                      key={i}
-                      variant="outline" 
-                      className="w-full justify-start text-left mb-2 border-white/10 hover:bg-white/5"
-                      onClick={() => window.location.href = `/workout-display/${w.id}`}
-                    >
-                      <Dumbbell className="h-4 w-4 mr-2" /> {w.title}
-                    </Button>
-                  ))}
+                <div className="space-y-2">
+                  {mockWorkouts
+                    .filter(w => w.id !== id)
+                    .map((w, i) => (
+                      <Button 
+                        key={i}
+                        variant="outline" 
+                        className="w-full justify-start text-left border-white/10 hover:bg-white/5"
+                        onClick={() => navigate(`/workout-display/${w.id}`)}
+                      >
+                        <Dumbbell className="h-4 w-4 mr-2" /> {w.title}
+                      </Button>
+                    ))}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -226,5 +277,40 @@ const WorkoutDisplay = () => {
     </div>
   );
 };
+
+// Mock workout data
+const mockWorkouts = [
+  {
+    id: "1",
+    title: "Upper Strength",
+    description: "Focus on building upper body strength with compound movements",
+    calories: 450,
+    duration: 60,
+    intensity: "High",
+    exercises: [
+      { name: "Bench Press", sets: 4, reps: "8-10", weight: "70% 1RM" },
+      { name: "Pull-ups", sets: 4, reps: "8-10", weight: "Bodyweight" },
+      { name: "Overhead Press", sets: 3, reps: "10-12", weight: "60% 1RM" },
+      { name: "Bent-over Row", sets: 3, reps: "10-12", weight: "65% 1RM" },
+      { name: "Tricep Dips", sets: 3, reps: "12-15", weight: "Bodyweight" },
+      { name: "Bicep Curls", sets: 3, reps: "12-15", weight: "Light" }
+    ]
+  },
+  {
+    id: "2",
+    title: "Back Workout",
+    description: "Comprehensive back workout for strength and definition",
+    calories: 400,
+    duration: 55,
+    intensity: "Medium-High",
+    exercises: [
+      { name: "Deadlifts", sets: 4, reps: "6-8", weight: "75% 1RM" },
+      { name: "Lat Pulldowns", sets: 3, reps: "10-12", weight: "Medium" },
+      { name: "Seated Rows", sets: 3, reps: "10-12", weight: "Medium" },
+      { name: "Face Pulls", sets: 3, reps: "15-20", weight: "Light" },
+      { name: "Hyperextensions", sets: 3, reps: "12-15", weight: "Bodyweight" }
+    ]
+  }
+];
 
 export default WorkoutDisplay;
