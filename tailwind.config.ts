@@ -1,8 +1,7 @@
 
-import { defineConfig } from "tailwindcss";
-import tailwindAnimate from "tailwindcss-animate";
+import { type Config } from "tailwindcss";
 
-export default defineConfig({
+export default {
   darkMode: ["class"],
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
@@ -73,5 +72,5 @@ export default defineConfig({
       },
     },
   },
-  plugins: [tailwindAnimate],
-});
+  plugins: [require("tailwindcss-animate")],
+} satisfies Config;
