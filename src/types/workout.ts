@@ -18,3 +18,15 @@ export type Workout = {
   type: string;
   date: string;
 };
+
+export type Food = {
+  id: string;
+  description: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  date: string;
+  imageUrl?: string;
+  suggestedAlternatives?: string[];
+};

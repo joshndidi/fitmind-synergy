@@ -1,64 +1,96 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Camera, BarChart3 } from "lucide-react";
+import { Upload, Camera, BarChart3, CheckCircle2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
+import { useAI } from "../hooks/useAI";
+import { Food } from "../types/workout";
 
 const CalorieTracker = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<null | {
-    description: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  }>(null);
+  const [analysis, setAnalysis] = useState<Food | null>(null);
+  const [saved, setSaved] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+  const { analyzeFood, loading, error } = useAI();
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
           setSelectedImage(e.target.result as string);
           setAnalysis(null);
+          setSaved(false);
         }
       };
-      reader.readAsDataURL(e.target.files[0]);
+      reader.readAsDataURL(file);
     }
   };
 
   const takePicture = () => {
     // In a real implementation, this would access the device camera
-    toast.info("Camera functionality would open here");
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
-  const analyzeImage = () => {
-    if (!selectedImage) {
+  const analyzeImage = async () => {
+    if (!selectedImage || !imageFile) {
       toast.error("Please select or take a picture of your meal first");
       return;
     }
 
     setAnalyzing(true);
     
-    // Simulate AI analysis with a timeout
-    setTimeout(() => {
-      // Mock AI response
-      const mockAnalysis = {
-        description: "Grilled chicken breast with steamed broccoli and brown rice",
-        calories: 450,
-        protein: 35,
-        carbs: 45,
-        fat: 12
+    try {
+      const result = await analyzeFood(imageFile);
+      
+      // Create a Food object with the analysis results
+      const foodItem: Food = {
+        id: crypto.randomUUID(),
+        description: result.description,
+        calories: result.calories,
+        protein: result.protein,
+        carbs: result.carbs,
+        fat: result.fat,
+        date: new Date().toISOString(),
+        imageUrl: selectedImage,
+        suggestedAlternatives: result.suggestedAlternatives
       };
       
-      setAnalysis(mockAnalysis);
-      setAnalyzing(false);
+      setAnalysis(foodItem);
       toast.success("Food analyzed successfully!");
-    }, 2000);
+    } catch (err) {
+      console.error("Error analyzing food:", err);
+      toast.error("Failed to analyze food. Please try again.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const saveFoodItem = () => {
+    if (!analysis) return;
+    
+    // Get existing food items from localStorage
+    const storedFood = localStorage.getItem('foodItems');
+    const foodItems: Food[] = storedFood ? JSON.parse(storedFood) : [];
+    
+    // Add the new food item
+    foodItems.push(analysis);
+    
+    // Save back to localStorage
+    localStorage.setItem('foodItems', JSON.stringify(foodItems));
+    
+    setSaved(true);
+    toast.success("Food item saved to your journal!");
   };
 
   return (
@@ -96,6 +128,7 @@ const CalorieTracker = () => {
                     accept="image/*"
                     className="hidden"
                     onChange={handleImageSelect}
+                    ref={fileInputRef}
                   />
                 </label>
                 
@@ -135,32 +168,60 @@ const CalorieTracker = () => {
           <CardContent>
             {analysis ? (
               <div className="space-y-6">
-                <p className="text-text-light font-medium">{analysis.description}</p>
+                <p className="text-text-light font-medium break-words line-clamp-2 hover:line-clamp-none">
+                  {analysis.description}
+                </p>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="glass-card p-4">
                     <p className="text-text-muted text-sm">Calories</p>
-                    <p className="text-text-light text-2xl font-bold">{analysis.calories} kcal</p>
+                    <p className="text-text-light text-xl font-bold truncate">{analysis.calories} kcal</p>
                   </div>
                   
                   <div className="glass-card p-4">
                     <p className="text-text-muted text-sm">Protein</p>
-                    <p className="text-text-light text-2xl font-bold">{analysis.protein}g</p>
+                    <p className="text-text-light text-xl font-bold truncate">{analysis.protein}g</p>
                   </div>
                   
                   <div className="glass-card p-4">
                     <p className="text-text-muted text-sm">Carbs</p>
-                    <p className="text-text-light text-2xl font-bold">{analysis.carbs}g</p>
+                    <p className="text-text-light text-xl font-bold truncate">{analysis.carbs}g</p>
                   </div>
                   
                   <div className="glass-card p-4">
                     <p className="text-text-muted text-sm">Fat</p>
-                    <p className="text-text-light text-2xl font-bold">{analysis.fat}g</p>
+                    <p className="text-text-light text-xl font-bold truncate">{analysis.fat}g</p>
                   </div>
                 </div>
                 
-                <Button className="w-full bg-primary text-white">
-                  Save to Food Journal
+                {analysis.suggestedAlternatives && analysis.suggestedAlternatives.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-text-light font-medium mb-2">Healthier Alternatives:</p>
+                    <ul className="space-y-1 text-sm text-text-muted">
+                      {analysis.suggestedAlternatives.map((alt, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <span className="text-primary mt-0.5">•</span>
+                          <span className="break-words">{alt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <Button 
+                  className="w-full bg-primary text-white"
+                  onClick={saveFoodItem}
+                  disabled={saved}
+                >
+                  {saved ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" /> Saved to Journal
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" /> Save to Food Journal
+                    </>
+                  )}
                 </Button>
               </div>
             ) : (
