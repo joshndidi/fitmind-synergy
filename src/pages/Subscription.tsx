@@ -1,85 +1,38 @@
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, Dumbbell, Check, X } from "lucide-react";
+import { Brain, Dumbbell } from "lucide-react";
 import SubscriptionCard from "../components/SubscriptionCard";
 import { useAuth } from "../context/AuthContext";
 
 const Subscription = () => {
   const { user } = useAuth();
   
-  const plans = [
-    {
-      id: "free",
-      name: "Free",
-      price: "£0",
-      period: "forever",
-      description: "Basic features for tracking your fitness journey",
-      features: [
-        { text: "Track workouts and progress", available: true },
-        { text: "Calculate weight lifted", available: true },
-        { text: "View leaderboard rankings", available: true },
-        { text: "Basic workout templates", available: true },
-        { text: "AI Workout Generator", available: false },
-        { text: "AI Calorie Tracker", available: false },
-        { text: "Advanced analytics", available: false },
-      ],
-      cta: "Current Plan",
-      isPopular: false,
-      disabled: true
-    },
-    {
-      id: "premium",
-      name: "Premium",
-      price: "£5",
-      period: "monthly",
-      description: "Unlock the full potential of your fitness and mental wellness",
-      features: [
-        { text: "Everything in Free plan", available: true },
-        { text: "AI Workout Generator", available: true },
-        { text: "AI Calorie Tracker", available: true },
-        { text: "Personalized fitness recommendations", available: true },
-        { text: "Advanced analytics and insights", available: true },
-        { text: "Unlimited workout history", available: true },
-        { text: "Priority support", available: true },
-      ],
-      cta: "Upgrade Now",
-      isPopular: true,
-      disabled: false
-    },
-    {
-      id: "annual",
-      name: "Annual",
-      price: "£48",
-      period: "yearly",
-      description: "Save 20% with yearly billing",
-      features: [
-        { text: "Everything in Premium plan", available: true },
-        { text: "2 months free", available: true },
-        { text: "Early access to new features", available: true },
-        { text: "Downloadable workout plans", available: true },
-        { text: "Custom workout builder", available: true },
-        { text: "Exclusive content", available: true },
-        { text: "One-on-one consultation", available: true },
-      ],
-      cta: "Get Annual Plan",
-      isPopular: false,
-      disabled: false
-    }
-  ];
+  const premiumPlan = {
+    id: "premium",
+    name: "Premium",
+    price: "£5",
+    period: "month",
+    description: "Unlock the full potential of your fitness and mental wellness",
+    features: [
+      { text: "Track workouts and progress", available: true },
+      { text: "Calculate weight lifted", available: true },
+      { text: "View leaderboard rankings", available: true },
+      { text: "AI Workout Generator", available: true },
+      { text: "AI Calorie Tracker", available: true },
+      { text: "Advanced analytics and insights", available: true },
+      { text: "Unlimited workout history", available: true },
+    ],
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <h1 className="text-3xl font-bold mb-4 text-text-light">Subscription Plans</h1>
+      <h1 className="text-3xl font-bold mb-4 text-text-light">Premium Subscription</h1>
       <p className="text-text-muted mb-8 max-w-3xl">
         Upgrade your fitness journey with AI-powered features and personalized recommendations.
-        Choose the plan that fits your needs and goals.
       </p>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-        {plans.map((plan) => (
-          <SubscriptionCard key={plan.id} plan={plan} />
-        ))}
+      <div className="mb-12">
+        <SubscriptionCard plan={premiumPlan} />
       </div>
       
       <div className="glass-card p-6 mb-12">
@@ -131,10 +84,6 @@ const Subscription = () => {
             {
               question: "Will I lose my data if I downgrade?",
               answer: "No, all your workout history and data will be preserved. However, you'll lose access to premium features like AI workout generation."
-            },
-            {
-              question: "Can I switch between monthly and annual plans?",
-              answer: "Yes, you can switch between plans at any time. If you upgrade to an annual plan from monthly, we'll prorate the remaining amount."
             }
           ].map((faq, index) => (
             <div key={index} className="glass-card p-4">

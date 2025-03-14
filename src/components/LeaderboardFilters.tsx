@@ -1,45 +1,39 @@
 
-import { useState } from "react";
-import { Globe, Map, MapPin } from "lucide-react";
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Globe, Map, Navigation } from "lucide-react";
 
-type Region = "global" | "continent" | "country" | "region" | "city" | "nearby";
+export type LocationFilter = "global" | "continent" | "country" | "region" | "city" | "nearby";
 
-type LeaderboardFiltersProps = {
-  onFilterChange: (region: Region) => void;
-};
+export interface LeaderboardFiltersProps {
+  currentFilter: LocationFilter;
+  onFilterChange: (filter: LocationFilter) => void;
+}
 
-const LeaderboardFilters = ({ onFilterChange }: LeaderboardFiltersProps) => {
-  const [activeFilter, setActiveFilter] = useState<Region>("global");
-
-  const handleFilterChange = (region: Region) => {
-    setActiveFilter(region);
-    onFilterChange(region);
-  };
-
-  const filters: { id: Region; label: string; icon: JSX.Element }[] = [
-    { id: "global", label: "Global", icon: <Globe size={18} /> },
-    { id: "continent", label: "Continent", icon: <Globe size={18} /> },
-    { id: "country", label: "Country", icon: <Globe size={18} /> },
-    { id: "region", label: "Region", icon: <Map size={18} /> },
-    { id: "city", label: "City", icon: <Map size={18} /> },
-    { id: "nearby", label: "Nearby (3mi)", icon: <MapPin size={18} /> },
+const LeaderboardFilters = ({ currentFilter, onFilterChange }: LeaderboardFiltersProps) => {
+  const filters: { value: LocationFilter; label: string; icon: React.ReactNode }[] = [
+    { value: "global", label: "Global", icon: <Globe className="h-4 w-4" /> },
+    { value: "continent", label: "Continent", icon: <Globe className="h-4 w-4" /> },
+    { value: "country", label: "Country", icon: <Map className="h-4 w-4" /> },
+    { value: "region", label: "Region", icon: <Map className="h-4 w-4" /> },
+    { value: "city", label: "City", icon: <Map className="h-4 w-4" /> },
+    { value: "nearby", label: "Nearby", icon: <Navigation className="h-4 w-4" /> },
   ];
-
+  
   return (
-    <div className="flex flex-wrap gap-2 my-4">
+    <div className="flex items-center glass-card p-0 rounded-lg">
       {filters.map((filter) => (
-        <button
-          key={filter.id}
-          onClick={() => handleFilterChange(filter.id)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ${
-            activeFilter === filter.id
-              ? "bg-primary text-white"
-              : "bg-white/10 text-text-muted hover:bg-white/20"
+        <Button
+          key={filter.value}
+          variant={currentFilter === filter.value ? "default" : "ghost"}
+          className={`rounded-none h-10 ${
+            currentFilter === filter.value ? "bg-primary text-white" : "text-text-light"
           }`}
+          onClick={() => onFilterChange(filter.value)}
         >
           {filter.icon}
-          <span>{filter.label}</span>
-        </button>
+          <span className="ml-2 hidden sm:inline">{filter.label}</span>
+        </Button>
       ))}
     </div>
   );
