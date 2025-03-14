@@ -1,6 +1,5 @@
 
 import { useState } from "react";
-import { Food } from "../types/workout";
 
 // Type for workout generation
 export type WorkoutPlanInput = {
@@ -93,10 +92,6 @@ export const useAI = () => {
       "Chest & Triceps": ["Bench Press", "Incline Press", "Chest Flyes", "Dips", "Tricep Extensions", "Close Grip Bench"],
       "Back & Biceps": ["Pull Ups", "Rows", "Lat Pulldowns", "Face Pulls", "Bicep Curls", "Hammer Curls"],
       "Legs & Shoulders": ["Squats", "Lunges", "Shoulder Press", "Lateral Raises", "Front Raises", "Calf Raises"],
-      "Arms": ["Bicep Curls", "Tricep Extensions", "Hammer Curls", "Skull Crushers", "Preacher Curls", "Rope Pushdowns"],
-      "Core": ["Planks", "Russian Twists", "Leg Raises", "Crunches", "Ab Rollouts", "Mountain Climbers"],
-      "Glutes": ["Hip Thrusts", "Glute Bridges", "Romanian Deadlifts", "Donkey Kicks", "Fire Hydrants", "Bulgarian Split Squats"],
-      "Shoulders": ["Shoulder Press", "Lateral Raises", "Front Raises", "Rear Delt Flyes", "Face Pulls", "Upright Rows"],
     };
     
     // Get possible exercises based on workout type
@@ -116,8 +111,7 @@ export const useAI = () => {
       exercises.push({
         name: exercise,
         sets,
-        reps: `${reps}`,
-        weight: "0", // Default weight
+        reps,
         rest: "60-90 sec",
       });
     }
@@ -125,19 +119,16 @@ export const useAI = () => {
     return exercises;
   };
 
-  // Function to analyze food image
-  const analyzeFood = async (image: File): Promise<CalorieTrackingResult> => {
+  // Mock function to analyze food image
+  const analyzeFood = async (image: File) => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log("Analyzing food image:", image.name);
-      
       // In a real app, this would upload the image to an AI service
-      // Simulate AI processing time
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Mock responses with more realistic food descriptions and nutritional data
+      // Mock responses
       const mockFoods = [
         {
           description: "Grilled chicken breast with steamed broccoli and brown rice",
@@ -159,45 +150,23 @@ export const useAI = () => {
           protein: 18,
           carbs: 52,
           fat: 8,
-          suggestedAlternatives: ["Use sugar-free honey to reduce calories by 30", "Try low-fat Greek yogurt to reduce fat content"],
+          suggestedAlternatives: ["Use sugar-free honey to reduce calories by 30"],
         },
         {
-          description: "Beef burger with fries and side salad",
+          description: "Beef burger with fries",
           calories: 850,
           protein: 40,
           carbs: 78,
           fat: 42,
-          suggestedAlternatives: ["Opt for a turkey burger to save 150 calories", "Choose a side salad instead of fries to save 300 calories", "Skip the mayo to reduce fat by 10g"],
+          suggestedAlternatives: ["Opt for a turkey burger to save 150 calories", "Choose a side salad instead of fries to save 300 calories"],
         },
         {
-          description: "Caesar salad with grilled chicken and croutons",
+          description: "Caesar salad with grilled chicken",
           calories: 380,
           protein: 28,
           carbs: 15,
           fat: 24,
-          suggestedAlternatives: ["Ask for dressing on the side to save 120 calories", "Skip the croutons to reduce carbs by 10g"],
-        },
-        {
-          description: "Vegetable stir-fry with tofu and brown rice",
-          calories: 390,
-          protein: 20,
-          carbs: 55,
-          fat: 12,
-        },
-        {
-          description: "Peanut butter and banana sandwich on whole wheat bread",
-          calories: 420,
-          protein: 15,
-          carbs: 58,
-          fat: 18,
-          suggestedAlternatives: ["Use powdered peanut butter to reduce fat by 10g", "Try open-faced sandwich to reduce calories by 100"],
-        },
-        {
-          description: "Protein smoothie with banana, berries, and protein powder",
-          calories: 340,
-          protein: 30,
-          carbs: 42,
-          fat: 5,
+          suggestedAlternatives: ["Ask for dressing on the side to save 120 calories"],
         },
       ];
       

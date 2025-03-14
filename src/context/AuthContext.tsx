@@ -7,7 +7,6 @@ type User = {
   email: string;
   displayName: string | null;
   photoURL: string | null;
-  isAdmin?: boolean;
 };
 
 type AuthContextType = {
@@ -49,23 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       
-      // Special admin user check
-      if (email === "admin" && password === "admin") {
-        const adminUser = {
-          id: "admin123",
-          email: "admin@fitmind.com",
-          displayName: "Admin User",
-          photoURL: null,
-          isAdmin: true
-        };
-        
-        setUser(adminUser);
-        localStorage.setItem("user", JSON.stringify(adminUser));
-        toast.success("Logged in as admin");
-        return;
-      }
-      
-      // Regular login - in a real app, this would call an auth API
+      // Mock login - in a real app, this would call an auth API
       if (email && password) {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1000));

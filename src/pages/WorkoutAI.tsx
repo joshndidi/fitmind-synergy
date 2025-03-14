@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Brain, Dumbbell, Clock, BarChart, Plus, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAI, WorkoutPlanInput } from "../hooks/useAI";
-import { useWorkout } from "../hooks/useWorkout";
 import { toast } from "sonner";
 
 const WorkoutAI = () => {
@@ -11,7 +10,6 @@ const WorkoutAI = () => {
   const [workoutPlan, setWorkoutPlan] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const { generateWorkoutPlan } = useAI();
-  const { saveAIWorkoutPlan } = useWorkout();
   const navigate = useNavigate();
   
   // Form states
@@ -49,11 +47,9 @@ const WorkoutAI = () => {
   };
 
   const handleSavePlan = () => {
-    // Use the saveAIWorkoutPlan function from useWorkout hook
-    if (workoutPlan) {
-      saveAIWorkoutPlan(workoutPlan);
-      navigate("/dashboard");
-    }
+    // In a real app, this would save the plan to a database
+    toast.success("Workout plan saved to your account!");
+    navigate("/dashboard");
   };
 
   return (

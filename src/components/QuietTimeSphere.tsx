@@ -1,44 +1,89 @@
-import React from "react";
 
-export interface QuietTimeSphereProps {
-  color: string;
-  isPlaying: boolean;
-  onClick: () => void;
-}
+import { useState, useEffect } from "react";
 
-const QuietTimeSphere = ({ color, isPlaying, onClick }: QuietTimeSphereProps) => {
-  // Implementation of the QuietTimeSphere component
+type SphereColor = "green" | "blue" | "purple";
+
+type QuietTimeSphereProps = {
+  initialColor?: SphereColor;
+  onColorChange?: (color: SphereColor) => void;
+};
+
+const QuietTimeSphere = ({
+  initialColor = "blue",
+  onColorChange,
+}: QuietTimeSphereProps) => {
+  const [color, setColor] = useState<SphereColor>(initialColor);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // Define color to tailwind class mapping
+  const colorClasses = {
+    green: "bg-sphere-green",
+    blue: "bg-sphere-blue",
+    purple: "bg-sphere-purple",
+  };
+
+  // Define color to music type mapping
+  const colorToMusic = {
+    green: "Meditation",
+    blue: "Calm Focus",
+    purple: "Deep Sleep",
+  };
+
+  const handleClick = () => {
+    // Cycle through colors: green -> blue -> purple -> green
+    const nextColor: Record<SphereColor, SphereColor> = {
+      green: "blue",
+      blue: "purple",
+      purple: "green",
+    };
+    
+    const newColor = nextColor[color];
+    setColor(newColor);
+    setIsAnimating(true);
+    
+    // Call onColorChange prop if provided
+    if (onColorChange) {
+      onColorChange(newColor);
+    }
+    
+    // Toggle play state
+    setIsPlaying(!isPlaying);
+  };
+
+  // Reset animation state after animation completes
+  useEffect(() => {
+    if (isAnimating) {
+      const timer = setTimeout(() => {
+        setIsAnimating(false);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isAnimating]);
+
   return (
-    <div
-      className={`relative cursor-pointer transition-all duration-500 ease-out ${
-        isPlaying ? "scale-110" : "scale-100 hover:scale-105"
-      }`}
-      onClick={onClick}
-      style={{ width: "220px", height: "220px" }}
-    >
+    <div className="flex flex-col items-center">
       <div
-        className="absolute inset-0 rounded-full shadow-lg transition-opacity"
-        style={{
-          background: color,
-          opacity: isPlaying ? 0.8 : 0.6,
-        }}
-      />
-      {isPlaying && (
-        <div className="absolute inset-2 rounded-full animate-pulse opacity-60" style={{ background: color }} />
-      )}
-      {isPlaying && (
-        <div className="absolute inset-4 rounded-full animate-pulse opacity-40" style={{ background: color }} />
-      )}
-      {isPlaying && (
-        <div className="absolute inset-6 rounded-full animate-pulse opacity-20" style={{ background: color }} />
-      )}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-white text-center">
-          <div className="text-2xl font-bold mb-2">
-            {isPlaying ? "Playing" : "Play"}
-          </div>
+        className={`
+          w-32 h-32 md:w-40 md:h-40 rounded-full shadow-lg cursor-pointer 
+          ${colorClasses[color]} 
+          transition-all duration-600 ease-out 
+          ${isAnimating ? "scale-110" : "scale-100"}
+          ${isPlaying ? "animate-pulse-slow" : ""}
+          flex items-center justify-center
+          hover:scale-105
+        `}
+        onClick={handleClick}
+      >
+        <div className="absolute w-28 h-28 md:w-36 md:h-36 rounded-full bg-white/10 backdrop-blur-sm"></div>
+        <div className="z-10 text-white text-center">
+          <p className="font-medium">{colorToMusic[color]}</p>
+          <p className="text-xs opacity-70">{isPlaying ? "Playing" : "Tap to Play"}</p>
         </div>
       </div>
+      <p className="mt-4 text-text-muted text-sm">
+        {isPlaying ? `Now Playing: ${colorToMusic[color]} Music` : "Click the sphere to play music"}
+      </p>
     </div>
   );
 };

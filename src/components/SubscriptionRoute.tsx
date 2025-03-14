@@ -2,25 +2,18 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useSubscription } from "../context/SubscriptionContext";
-import { useAuth } from "../context/AuthContext";
 
 const SubscriptionRoute = ({ children }: { children: ReactNode }) => {
-  const { isActive, loading: subscriptionLoading } = useSubscription();
-  const { user, loading: authLoading } = useAuth();
+  const { isActive, loading } = useSubscription();
   const location = useLocation();
 
   // If still loading, show a loading spinner
-  if (authLoading || subscriptionLoading) {
+  if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
-  }
-
-  // Admin users can access all features
-  if (user?.isAdmin) {
-    return <>{children}</>;
   }
 
   // If not subscribed, redirect to subscription page
