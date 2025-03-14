@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Workout, Exercise } from "../types/workout";
+import { format } from "date-fns";
 
 // Mock workout data
 const mockWorkouts: Workout[] = [
@@ -101,6 +101,7 @@ export const useWorkout = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [completedWorkouts, setCompletedWorkouts] = useState<Workout[]>([]);
   const [totalWeightLifted, setTotalWeightLifted] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
   
   // Load workout data on mount
   useEffect(() => {
@@ -124,6 +125,13 @@ export const useWorkout = () => {
     if (storedTotalWeight) {
       setTotalWeightLifted(Number(storedTotalWeight));
     }
+    
+    // Add loading state management
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
   
   // Update localStorage when state changes
@@ -207,11 +215,105 @@ export const useWorkout = () => {
     }
   };
   
+  // New function to save AI-generated workout plan
+  const saveAIWorkoutPlan = (plan: any) => {
+    const newWorkouts: Workout[] = [];
+    
+    plan.workouts.forEach((workout: any, index: number) => {
+      // Format exercises to match our Exercise type
+      const exercises: Exercise[] = workout.exercises.map((ex: any) => ({
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps.toString(),
+        weight: ex.weight || "0",
+        rest: ex.rest || "60 sec"
+      }));
+      
+      // Generate a random calorie burn based on intensity and duration
+      const intensityMultiplier = 
+        workout.intensity === "High" ? 12 :
+        workout.intensity === "Medium" ? 10 : 8;
+      const calories = Math.round(workout.duration * intensityMultiplier);
+      
+      // Create a workout with today's date + index days
+      const today = new Date();
+      today.setDate(today.getDate() + index);
+      const formattedDate = format(today, 'yyyy-MM-dd');
+      
+      // Create the new workout object
+      const newWorkout: Workout = {
+        id: `ai-${Date.now()}-${index}`,
+        title: workout.name,
+        description: `${plan.overview} - Day ${workout.day}`,
+        calories,
+        duration: workout.duration,
+        intensity: workout.intensity,
+        exercises,
+        type: workout.name.split(":")[1]?.trim() || "AI Workout",
+        date: formattedDate
+      };
+      
+      newWorkouts.push(newWorkout);
+    });
+    
+    // Add the new workouts to the existing workouts
+    setWorkouts(prev => [...prev, ...newWorkouts]);
+    toast.success(`Added ${newWorkouts.length} workouts to your plan!`);
+    
+    return newWorkouts;
+  };
+  
+  // Function to get logged workouts for the calendar
+  const getLoggedWorkouts = () => {
+    return completedWorkouts.map(workout => ({
+      ...workout,
+      totalWeight: calculateWorkoutWeight(workout)
+    }));
+  };
+  
+  // Function to log a custom workout
+  const logCustomWorkout = (workout: Workout) => {
+    // Add to completed workouts
+    setCompletedWorkouts(prev => [...prev, workout]);
+    
+    // Calculate and add weight lifted
+    const weightLifted = calculateWorkoutWeight(workout);
+    setTotalWeightLifted(prev => prev + weightLifted);
+    
+    toast.success(`Custom workout logged: ${workout.title}!`);
+    
+    // Check for achievements
+    checkAchievements(totalWeightLifted + weightLifted);
+  };
+  
+  // Function to get achievements based on total weight lifted
+  const getAchievements = () => {
+    const achievements = [
+      { threshold: 5000, name: "Beginner Lifter", icon: "🏋️‍♂️" },
+      { threshold: 25000, name: "Intermediate Lifter", icon: "💪" },
+      { threshold: 100000, name: "Advanced Lifter", icon: "🔥" },
+      { threshold: 500000, name: "Elite Lifter", icon: "⭐" },
+      { threshold: 1000000, name: "Legendary Lifter", icon: "🏆" }
+    ];
+    
+    return achievements.map(achievement => ({
+      ...achievement,
+      achieved: totalWeightLifted >= achievement.threshold
+    }));
+  };
+  
   return {
     workouts,
     completedWorkouts,
     totalWeightLifted,
+    loading,
     getWorkoutById,
-    completeWorkout
+    completeWorkout,
+    saveAIWorkoutPlan,
+    logCustomWorkout,
+    getAchievements,
+    loggedWorkouts: getLoggedWorkouts()
   };
 };
+
+export type { Workout } from "../types/workout";
