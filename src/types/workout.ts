@@ -13,10 +13,12 @@ export type Workout = {
   description: string;
   calories: number;
   duration: number;
-  intensity: string;
+  intensity: "High" | "Medium" | "Low";
   exercises: Exercise[];
   type: string;
-  date: string;
+  date: string; // Format: 'yyyy-MM-dd'
+  completedDate?: string;
+  totalWeight?: number;
 };
 
 export type Food = {

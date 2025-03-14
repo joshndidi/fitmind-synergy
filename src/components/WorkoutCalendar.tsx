@@ -12,7 +12,7 @@ const WorkoutCalendar = () => {
   
   // Group workouts by date
   const workoutsByDate = loggedWorkouts.reduce((acc, workout) => {
-    const dateStr = format(workout.date, 'yyyy-MM-dd');
+    const dateStr = format(new Date(workout.date), 'yyyy-MM-dd');
     if (!acc[dateStr]) {
       acc[dateStr] = [];
     }
@@ -56,7 +56,7 @@ const WorkoutCalendar = () => {
           
           <div className="space-y-4">
             <h3 className="text-text-light font-medium text-lg">
-              {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select a date'}
+              {selectedDate ? format(selectedDate, 'yyyy-MM-dd') : 'Select a date'}
             </h3>
             
             {workoutsForSelectedDate.length === 0 ? (
@@ -75,7 +75,7 @@ const WorkoutCalendar = () => {
                     </div>
                     
                     <div className="text-text-muted text-sm mb-3">
-                      {workout.exercises.length} exercises • {workout.totalWeight.toLocaleString()} kg total
+                      {workout.exercises.length} exercises • {workout.totalWeight?.toLocaleString() || 0} kg total
                     </div>
                     
                     <div className="space-y-2">
@@ -83,7 +83,7 @@ const WorkoutCalendar = () => {
                         <div key={i} className="flex justify-between text-sm">
                           <span className="text-text-light">{exercise.name}</span>
                           <span className="text-text-muted">
-                            {exercise.sets} × {exercise.reps} × {exercise.weight} kg
+                            {exercise.sets} × {exercise.reps} × {exercise.weight}
                           </span>
                         </div>
                       ))}

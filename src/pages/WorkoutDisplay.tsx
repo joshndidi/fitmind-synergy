@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useWorkout } from "../hooks/useWorkout";
 import { toast } from "sonner";
 import { Workout, Exercise } from "../types/workout";
+import { format } from "date-fns";
 
 const WorkoutDisplay = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,7 +27,10 @@ const WorkoutDisplay = () => {
           foundWorkout.type = "Strength"; // Default type
         }
         if (!foundWorkout.date) {
-          foundWorkout.date = new Date().toISOString(); // Default to current date
+          foundWorkout.date = format(new Date(), 'yyyy-MM-dd'); // Default to current date in yyyy-MM-dd format
+        } else if (foundWorkout.date.includes('T')) {
+          // If the date is in ISO format, convert it to yyyy-MM-dd
+          foundWorkout.date = format(new Date(foundWorkout.date), 'yyyy-MM-dd');
         }
         
         setWorkout(foundWorkout);
