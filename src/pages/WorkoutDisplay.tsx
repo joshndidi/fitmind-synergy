@@ -16,48 +16,54 @@ const WorkoutDisplay = () => {
   const [completed, setCompleted] = useState<boolean[]>([]);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [isWorkoutComplete, setIsWorkoutComplete] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // If no ID is provided or ID is "1", use the first workout from the list
-    if (!id || id === "1") {
-      if (workouts && workouts.length > 0) {
+    const loadWorkout = () => {
+      setLoading(true);
+      
+      if (workouts.length === 0) {
+        // No workouts available at all
+        navigate("/dashboard");
+        toast.error("No workouts available. Create one in Workout AI.");
+        return;
+      }
+      
+      // If no specific ID is provided or ID is invalid
+      if (!id) {
+        // Use the first workout
         const firstWorkout = workouts[0];
         setWorkout(firstWorkout);
         setCompleted(new Array(firstWorkout.exercises.length).fill(false));
-      } else {
-        navigate("/dashboard");
-        toast.error("No workouts available");
+        setLoading(false);
+        return;
       }
-    } else {
-      // Otherwise, find the workout by ID
+      
+      // Try to find the specific workout
       const foundWorkout = getWorkoutById(id);
-      if (foundWorkout) {
-        // Ensure workout has type and date properties
-        if (!foundWorkout.type) {
-          foundWorkout.type = "Strength"; // Default type
-        }
-        if (!foundWorkout.date) {
-          foundWorkout.date = format(new Date(), 'yyyy-MM-dd'); // Default to current date in yyyy-MM-dd format
-        } else if (foundWorkout.date.includes('T')) {
-          // If the date is in ISO format, convert it to yyyy-MM-dd
-          foundWorkout.date = format(new Date(foundWorkout.date), 'yyyy-MM-dd');
-        }
-        
-        setWorkout(foundWorkout);
-        setCompleted(new Array(foundWorkout.exercises.length).fill(false));
-      } else {
-        // If workout not found by ID, use the first workout
-        if (workouts && workouts.length > 0) {
-          const firstWorkout = workouts[0];
-          setWorkout(firstWorkout);
-          setCompleted(new Array(firstWorkout.exercises.length).fill(false));
-          toast.info("Requested workout not found, showing first available workout");
-        } else {
-          navigate("/dashboard");
-          toast.error("Workout not found");
-        }
+      
+      if (!foundWorkout) {
+        // If specific workout not found, use the first one
+        const firstWorkout = workouts[0];
+        setWorkout(firstWorkout);
+        setCompleted(new Array(firstWorkout.exercises.length).fill(false));
+        toast.info("Requested workout not found, showing first available workout");
+        setLoading(false);
+        return;
       }
-    }
+      
+      // Workout found, use it
+      setWorkout(foundWorkout);
+      setCompleted(new Array(foundWorkout.exercises.length).fill(false));
+      setLoading(false);
+    };
+
+    // Small delay to ensure workouts are loaded
+    const timer = setTimeout(() => {
+      loadWorkout();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [id, navigate, getWorkoutById, workouts]);
 
   const handleExerciseComplete = (index: number) => {
@@ -81,10 +87,34 @@ const WorkoutDisplay = () => {
     }
   };
 
-  if (!workout) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[80vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!workout) {
+    return (
+      <div className="page-container flex flex-col items-center justify-center min-h-[80vh]">
+        <div className="glass-card p-8 text-center max-w-md">
+          <Dumbbell className="mx-auto h-12 w-12 text-primary mb-4" />
+          <h2 className="text-xl font-bold text-text-light mb-3">No Workout Found</h2>
+          <p className="text-text-muted mb-6">We couldn't find the workout you're looking for.</p>
+          <button 
+            onClick={() => navigate("/workout-ai")}
+            className="btn-primary w-full mb-4"
+          >
+            Create New Workout
+          </button>
+          <button 
+            onClick={() => navigate("/dashboard")}
+            className="btn-secondary w-full"
+          >
+            Back to Dashboard
+          </button>
+        </div>
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Activity, TrendingUp, Calendar, Dumbbell, Award, ChevronRight } from "lucide-react";
 import { useWorkout, Workout } from "../hooks/useWorkout";
 import WorkoutCard from "../components/WorkoutCard";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const { workouts, loading } = useWorkout();
@@ -32,11 +33,22 @@ const Dashboard = () => {
   }).slice(0, 3);
 
   const handleWorkoutClick = (workout: Workout) => {
-    navigate(`/workout-display/${workout.id}`);
+    if (workout && workout.id) {
+      navigate(`/workout-display/${workout.id}`);
+    } else {
+      toast.error("Unable to open workout. Please try another one.");
+    }
   };
 
-  // Get the first workout ID for the "Start Workout" button
-  const firstWorkoutId = workouts.length > 0 ? workouts[0].id : "1";
+  // Handle Start Workout button click
+  const handleStartWorkout = () => {
+    if (workouts.length > 0 && workouts[0].id) {
+      navigate(`/workout-display/${workouts[0].id}`);
+    } else {
+      toast.error("No workouts available. Create one in Workout AI.");
+      navigate("/workout-ai");
+    }
+  };
 
   return (
     <div className={`page-container transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}>
@@ -134,7 +146,7 @@ const Dashboard = () => {
               
               <button 
                 className="btn-primary whitespace-nowrap"
-                onClick={() => navigate(`/workout-display/${firstWorkoutId}`)}
+                onClick={handleStartWorkout}
               >
                 Start Workout
               </button>
