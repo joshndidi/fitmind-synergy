@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Clock, BarChart3, Dumbbell, ArrowLeft, CheckCircle2 } from "lucide-react";
@@ -11,7 +10,7 @@ import { format } from "date-fns";
 const WorkoutDisplay = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getWorkoutById, completeWorkout } = useWorkout();
+  const { getWorkoutById, completeWorkout, workouts } = useWorkout();
   
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [completed, setCompleted] = useState<boolean[]>([]);
@@ -19,7 +18,18 @@ const WorkoutDisplay = () => {
   const [isWorkoutComplete, setIsWorkoutComplete] = useState(false);
   
   useEffect(() => {
-    if (id) {
+    // If no ID is provided or ID is "1", use the first workout from the list
+    if (!id || id === "1") {
+      if (workouts && workouts.length > 0) {
+        const firstWorkout = workouts[0];
+        setWorkout(firstWorkout);
+        setCompleted(new Array(firstWorkout.exercises.length).fill(false));
+      } else {
+        navigate("/dashboard");
+        toast.error("No workouts available");
+      }
+    } else {
+      // Otherwise, find the workout by ID
       const foundWorkout = getWorkoutById(id);
       if (foundWorkout) {
         // Ensure workout has type and date properties
@@ -36,11 +46,19 @@ const WorkoutDisplay = () => {
         setWorkout(foundWorkout);
         setCompleted(new Array(foundWorkout.exercises.length).fill(false));
       } else {
-        navigate("/dashboard");
-        toast.error("Workout not found");
+        // If workout not found by ID, use the first workout
+        if (workouts && workouts.length > 0) {
+          const firstWorkout = workouts[0];
+          setWorkout(firstWorkout);
+          setCompleted(new Array(firstWorkout.exercises.length).fill(false));
+          toast.info("Requested workout not found, showing first available workout");
+        } else {
+          navigate("/dashboard");
+          toast.error("Workout not found");
+        }
       }
     }
-  }, [id, navigate, getWorkoutById]);
+  }, [id, navigate, getWorkoutById, workouts]);
 
   const handleExerciseComplete = (index: number) => {
     const newCompleted = [...completed];

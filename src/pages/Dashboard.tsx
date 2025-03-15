@@ -35,6 +35,9 @@ const Dashboard = () => {
     navigate(`/workout-display/${workout.id}`);
   };
 
+  // Get the first workout ID for the "Start Workout" button
+  const firstWorkoutId = workouts.length > 0 ? workouts[0].id : "1";
+
   return (
     <div className={`page-container transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}>
       <div className="mb-8">
@@ -113,22 +116,25 @@ const Dashboard = () => {
                 <div className="flex items-center mb-2">
                   <Calendar className="mr-2 h-5 w-5 text-primary" />
                   <h3 className="font-semibold text-text-light">
-                    Upper Body Strength
+                    {workouts[0].title}
                   </h3>
                 </div>
-                <p className="text-text-muted mb-4">4 exercises · 45 minutes · High intensity</p>
+                <p className="text-text-muted mb-4">
+                  {workouts[0].exercises.length} exercises · {workouts[0].duration} minutes · {workouts[0].intensity} intensity
+                </p>
                 
                 <div className="flex flex-wrap gap-2">
-                  <span className="px-3 py-1 text-xs rounded-full bg-white/10 text-text-light">Bench Press</span>
-                  <span className="px-3 py-1 text-xs rounded-full bg-white/10 text-text-light">Shoulder Press</span>
-                  <span className="px-3 py-1 text-xs rounded-full bg-white/10 text-text-light">Pull-ups</span>
-                  <span className="px-3 py-1 text-xs rounded-full bg-white/10 text-text-light">Tricep Extensions</span>
+                  {workouts[0].exercises.slice(0, 4).map((exercise, index) => (
+                    <span key={index} className="px-3 py-1 text-xs rounded-full bg-white/10 text-text-light">
+                      {exercise.name}
+                    </span>
+                  ))}
                 </div>
               </div>
               
               <button 
                 className="btn-primary whitespace-nowrap"
-                onClick={() => navigate("/workout-display/1")}
+                onClick={() => navigate(`/workout-display/${firstWorkoutId}`)}
               >
                 Start Workout
               </button>
