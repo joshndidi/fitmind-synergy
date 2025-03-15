@@ -17,11 +17,11 @@ const LogWorkoutForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [date, setDate] = useState<Date>(new Date());
   const [title, setTitle] = useState("");
   const [exercises, setExercises] = useState([
-    { name: "", sets: 1, reps: 10, weight: 0 },
+    { name: "", sets: 1, reps: "10", weight: "0" },
   ]);
   
   const addExercise = () => {
-    setExercises([...exercises, { name: "", sets: 1, reps: 10, weight: 0 }]);
+    setExercises([...exercises, { name: "", sets: 1, reps: "10", weight: "0" }]);
   };
   
   const removeExercise = (index: number) => {
@@ -34,7 +34,7 @@ const LogWorkoutForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     const updatedExercises = [...exercises];
     updatedExercises[index] = { 
       ...updatedExercises[index], 
-      [field]: field === 'name' ? value : Number(value) 
+      [field]: field === 'name' ? value : field === 'sets' ? Number(value) : String(value)
     };
     setExercises(updatedExercises);
   };
@@ -59,7 +59,7 @@ const LogWorkoutForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     
     // Reset form
     setTitle("");
-    setExercises([{ name: "", sets: 1, reps: 10, weight: 0 }]);
+    setExercises([{ name: "", sets: 1, reps: "10", weight: "0" }]);
     
     // Call success callback if provided
     if (onSuccess) {

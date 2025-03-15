@@ -272,7 +272,20 @@ export const useWorkout = () => {
   };
   
   // Function to log a custom workout
-  const logCustomWorkout = (workout: Workout) => {
+  const logCustomWorkout = (title: string, exercises: Exercise[]) => {
+    const workout: Workout = {
+      id: `custom-${Date.now()}`,
+      title,
+      description: "Custom logged workout",
+      calories: exercises.length * 50,
+      duration: exercises.length * 5,
+      intensity: "Medium",
+      exercises,
+      type: "Custom",
+      date: format(new Date(), 'yyyy-MM-dd'),
+      completedDate: format(new Date(), 'yyyy-MM-dd')
+    };
+    
     // Add to completed workouts
     setCompletedWorkouts(prev => [...prev, workout]);
     
@@ -289,16 +302,47 @@ export const useWorkout = () => {
   // Function to get achievements based on total weight lifted
   const getAchievements = () => {
     const achievements = [
-      { threshold: 5000, name: "Beginner Lifter", icon: "🏋️‍♂️" },
-      { threshold: 25000, name: "Intermediate Lifter", icon: "💪" },
-      { threshold: 100000, name: "Advanced Lifter", icon: "🔥" },
-      { threshold: 500000, name: "Elite Lifter", icon: "⭐" },
-      { threshold: 1000000, name: "Legendary Lifter", icon: "🏆" }
+      { 
+        id: "beginner",
+        name: "Beginner Lifter", 
+        description: "Lift your first 5,000 kg total",
+        threshold: 5000, 
+        icon: "🏋️‍♂️", 
+      },
+      { 
+        id: "intermediate",
+        name: "Intermediate Lifter", 
+        description: "Lift 25,000 kg total",
+        threshold: 25000, 
+        icon: "💪", 
+      },
+      { 
+        id: "advanced",
+        name: "Advanced Lifter", 
+        description: "Lift 100,000 kg total",
+        threshold: 100000, 
+        icon: "🔥", 
+      },
+      { 
+        id: "elite",
+        name: "Elite Lifter", 
+        description: "Lift 500,000 kg total",
+        threshold: 500000, 
+        icon: "⭐", 
+      },
+      { 
+        id: "legendary",
+        name: "Legendary Lifter", 
+        description: "Lift 1,000,000 kg total",
+        threshold: 1000000, 
+        icon: "🏆", 
+      }
     ];
     
     return achievements.map(achievement => ({
       ...achievement,
-      achieved: totalWeightLifted >= achievement.threshold
+      achieved: totalWeightLifted >= achievement.threshold,
+      progress: Math.min(1, totalWeightLifted / achievement.threshold)
     }));
   };
   
