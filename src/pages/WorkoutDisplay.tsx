@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Clock, BarChart3, Dumbbell, ArrowLeft, CheckCircle2 } from "lucide-react";
@@ -5,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { useWorkout } from "../hooks/useWorkout";
 import { toast } from "sonner";
 import { Workout, Exercise } from "../types/workout";
-import { format } from "date-fns";
 
 const WorkoutDisplay = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +18,7 @@ const WorkoutDisplay = () => {
   const [isWorkoutComplete, setIsWorkoutComplete] = useState(false);
   const [loading, setLoading] = useState(true);
   
+  // Load workout and progress
   useEffect(() => {
     const loadWorkout = () => {
       setLoading(true);
@@ -29,32 +30,40 @@ const WorkoutDisplay = () => {
         return;
       }
       
-      // If no specific ID is provided or ID is invalid
-      if (!id) {
-        // Use the first workout
-        const firstWorkout = workouts[0];
-        setWorkout(firstWorkout);
-        setCompleted(new Array(firstWorkout.exercises.length).fill(false));
-        setLoading(false);
-        return;
+      // Determine which workout to display
+      let targetWorkout: Workout | null = null;
+      
+      // Try to find the specific workout if ID is provided
+      if (id) {
+        targetWorkout = getWorkoutById(id);
       }
       
-      // Try to find the specific workout
-      const foundWorkout = getWorkoutById(id);
-      
-      if (!foundWorkout) {
-        // If specific workout not found, use the first one
-        const firstWorkout = workouts[0];
-        setWorkout(firstWorkout);
-        setCompleted(new Array(firstWorkout.exercises.length).fill(false));
-        toast.info("Requested workout not found, showing first available workout");
-        setLoading(false);
-        return;
+      // If no ID provided or workout not found, use the first one
+      if (!targetWorkout) {
+        targetWorkout = workouts[0];
+        if (id) {
+          toast.info("Requested workout not found, showing first available workout");
+        }
       }
       
-      // Workout found, use it
-      setWorkout(foundWorkout);
-      setCompleted(new Array(foundWorkout.exercises.length).fill(false));
+      setWorkout(targetWorkout);
+      
+      // Load saved progress from localStorage
+      const savedProgressKey = `workout-progress-${targetWorkout.id}`;
+      const savedProgress = localStorage.getItem(savedProgressKey);
+      
+      if (savedProgress) {
+        const parsedProgress = JSON.parse(savedProgress);
+        setCompleted(parsedProgress);
+        
+        // Check if all exercises are completed
+        if (parsedProgress.every((item: boolean) => item === true)) {
+          setIsWorkoutComplete(true);
+        }
+      } else {
+        setCompleted(new Array(targetWorkout.exercises.length).fill(false));
+      }
+      
       setLoading(false);
     };
 
@@ -65,6 +74,14 @@ const WorkoutDisplay = () => {
     
     return () => clearTimeout(timer);
   }, [id, navigate, getWorkoutById, workouts]);
+
+  // Save progress when completed state changes
+  useEffect(() => {
+    if (workout && completed.length > 0) {
+      const progressKey = `workout-progress-${workout.id}`;
+      localStorage.setItem(progressKey, JSON.stringify(completed));
+    }
+  }, [completed, workout]);
 
   const handleExerciseComplete = (index: number) => {
     const newCompleted = [...completed];
@@ -83,6 +100,11 @@ const WorkoutDisplay = () => {
     if (workout) {
       completeWorkout(workout);
       toast.success("Workout completed! Great job!");
+      
+      // Clear progress after completing
+      const progressKey = `workout-progress-${workout.id}`;
+      localStorage.removeItem(progressKey);
+      
       navigate("/dashboard");
     }
   };
