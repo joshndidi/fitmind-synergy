@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useWorkout } from "../hooks/useWorkout";
 import { toast } from "sonner";
 import { Workout, Exercise } from "../types/workout";
+import WorkoutActions from "../components/WorkoutActions";
 
 const WorkoutDisplay = () => {
   const { id } = useParams<{ id: string }>();
@@ -124,15 +125,13 @@ const WorkoutDisplay = () => {
           <Dumbbell className="mx-auto h-12 w-12 text-primary mb-4" />
           <h2 className="text-xl font-bold text-text-light mb-3">No Workout Found</h2>
           <p className="text-text-muted mb-6">We couldn't find the workout you're looking for.</p>
-          <button 
-            onClick={() => navigate("/workout-ai")}
-            className="btn-primary w-full mb-4"
-          >
-            Create New Workout
-          </button>
+          
+          {/* Add the Workout Actions even when no workout is found */}
+          <WorkoutActions />
+          
           <button 
             onClick={() => navigate("/dashboard")}
-            className="btn-secondary w-full"
+            className="btn-secondary w-full mt-4"
           >
             Back to Dashboard
           </button>
@@ -197,6 +196,9 @@ const WorkoutDisplay = () => {
                 Complete Workout
               </button>
             )}
+            
+            {/* Add the Workout Actions */}
+            <WorkoutActions />
           </div>
         </div>
         
