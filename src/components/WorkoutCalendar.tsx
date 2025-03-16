@@ -56,7 +56,7 @@ const WorkoutCalendar = () => {
           
           <div className="space-y-4">
             <h3 className="text-text-light font-medium text-lg">
-              {selectedDate ? format(selectedDate, 'yyyy-MM-dd') : 'Select a date'}
+              {selectedDate ? format(selectedDate, 'dd/MM/yyyy') : 'Select a date'}
             </h3>
             
             {workoutsForSelectedDate.length === 0 ? (

@@ -18,7 +18,7 @@ import {
   DialogDescription,
   DialogClose
 } from "@/components/ui/dialog";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,7 +47,7 @@ type WorkoutFormData = {
 
 const WorkoutActions = () => {
   const navigate = useNavigate();
-  const { workouts, addWorkout } = useWorkout();
+  const { workouts, logCustomWorkout, getWorkoutById } = useWorkout();
   const [openDialog, setOpenDialog] = useState<string | null>(null);
   const [exercises, setExercises] = useState<ExerciseInput[]>([{
     name: "",
@@ -57,7 +57,7 @@ const WorkoutActions = () => {
     rest: "60 seconds"
   }]);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<WorkoutFormData>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<WorkoutFormData>({
     defaultValues: {
       title: "",
       description: "",
@@ -135,16 +135,30 @@ const WorkoutActions = () => {
     // Create a unique ID for the workout
     const id = `w${Date.now()}`;
     
+    // Create new exercises array with correct type format
+    const formattedExercises = validExercises.map(ex => ({
+      name: ex.name,
+      sets: ex.sets,
+      reps: ex.reps.toString(),
+      weight: ex.weight || "0",
+      rest: ex.rest || "60 sec"
+    }));
+    
     // Create the new workout
     const newWorkout = {
       id,
-      ...data,
-      exercises: validExercises,
+      title: data.title,
+      description: data.description,
+      duration: data.duration,
+      intensity: data.intensity as "High" | "Medium" | "Low",
+      calories: data.calories,
+      exercises: formattedExercises,
+      type: "Custom",
       date: new Date().toISOString()
     };
     
-    // Add the workout to the store
-    addWorkout(newWorkout);
+    // Use the logCustomWorkout function to save the workout
+    logCustomWorkout(data.title, formattedExercises);
     
     // Show success message
     toast.success("Workout plan created successfully!");
@@ -152,13 +166,13 @@ const WorkoutActions = () => {
     // Close the dialog and reset the form
     closeDialog();
     
-    // Navigate to the new workout
-    navigate(`/workout-display/${id}`);
+    // Navigate to the dashboard
+    navigate(`/dashboard`);
   };
 
   return (
     <>
-      <div className="flex flex-col md:flex-row gap-3 mt-6 w-full">
+      <div className="flex flex-col md:flex-row gap-3 mt-6 w-full justify-center">
         <Button
           onClick={handleChoosePlan}
           className="flex items-center justify-center gap-2"
@@ -216,23 +230,25 @@ const WorkoutActions = () => {
                 
                 <div>
                   <Label htmlFor="intensity">Intensity</Label>
-                  <Select 
-                    {...register("intensity")}
-                    onValueChange={(value) => {
-                      reset({ ...register("").getValues(), intensity: value });
-                    }}
-                    defaultValue="Medium"
-                  >
-                    <SelectTrigger className="bg-black/40">
-                      <SelectValue placeholder="Select intensity" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Low">Low</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="High">High</SelectItem>
-                      <SelectItem value="Very High">Very High</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="intensity"
+                    control={control}
+                    render={({ field }) => (
+                      <Select 
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger className="bg-black/40">
+                          <SelectValue placeholder="Select intensity" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Low">Low</SelectItem>
+                          <SelectItem value="Medium">Medium</SelectItem>
+                          <SelectItem value="High">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
                 
                 <div>

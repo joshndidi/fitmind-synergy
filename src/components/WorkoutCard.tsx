@@ -1,5 +1,6 @@
 
 import { Dumbbell, Calendar, Flame, Clock } from "lucide-react";
+import { format } from "date-fns";
 
 type WorkoutCardProps = {
   title: string;
@@ -26,6 +27,9 @@ const WorkoutCard = ({
     Medium: "bg-yellow-500/20 text-yellow-400",
     High: "bg-red-500/20 text-red-400",
   }[intensity];
+
+  // Format the date to dd/mm/yyyy
+  const formattedDate = format(new Date(date), 'dd/MM/yyyy');
 
   return (
     <div 
@@ -58,7 +62,7 @@ const WorkoutCard = ({
           
           <div className="flex flex-col items-center p-2 bg-white/5 rounded-lg">
             <Calendar size={18} className="text-text-muted mb-1" />
-            <span className="text-text-light font-medium">{date}</span>
+            <span className="text-text-light font-medium">{formattedDate}</span>
             <span className="text-xs text-text-muted">Date</span>
           </div>
         </div>
