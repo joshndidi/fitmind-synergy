@@ -20,14 +20,8 @@ import { useState, useEffect } from "react";
 const NavBar = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { workouts } = useWorkout();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-
-  // Get first workout ID or default to "/dashboard" if no workouts
-  const workoutPath = workouts && workouts.length > 0 
-    ? `/workout-display/${workouts[0].id}` 
-    : "/dashboard";
 
   const handleLogout = async () => {
     await logout();
@@ -53,7 +47,7 @@ const NavBar = () => {
     { name: "Workout AI", path: "/workout-ai", icon: <Brain size={20} /> },
     { name: "Calorie Tracker", path: "/calorie-tracker", icon: <Activity size={20} /> },
     { name: "Profile", path: "/profile", icon: <User size={20} /> },
-    { name: "Workouts", path: workoutPath, icon: <Dumbbell size={20} /> },
+    { name: "Workouts", path: "/workouts", icon: <Dumbbell size={20} /> },
     { name: "Subscription", path: "/subscription", icon: <CreditCard size={20} /> },
     { name: "Quiet Time", path: "/quiet-time", icon: <Music size={20} /> },
     { name: "Social", path: "/social", icon: <Users size={20} /> },

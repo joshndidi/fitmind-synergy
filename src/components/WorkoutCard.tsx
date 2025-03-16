@@ -28,7 +28,7 @@ const WorkoutCard = ({
     High: "bg-red-500/20 text-red-400",
   }[intensity];
 
-  // Format the date to dd/mm/yyyy
+  // Format the date to dd/MM/yyyy
   const formattedDate = format(new Date(date), 'dd/MM/yyyy');
 
   return (

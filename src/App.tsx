@@ -13,6 +13,7 @@ import WorkoutAI from "./pages/WorkoutAI";
 import CalorieTracker from "./pages/CalorieTracker";
 import Profile from "./pages/Profile";
 import WorkoutDisplay from "./pages/WorkoutDisplay";
+import WorkoutSelection from "./pages/WorkoutSelection";
 import Subscription from "./pages/Subscription";
 import QuietTime from "./pages/QuietTime";
 import Social from "./pages/Social";
@@ -46,6 +47,7 @@ const App = () => (
                   </SubscriptionRoute>
                 } />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/workouts" element={<WorkoutSelection />} />
                 <Route path="/workout-display/:id" element={<WorkoutDisplay />} />
                 <Route path="/subscription" element={<Subscription />} />
                 <Route path="/quiet-time" element={<QuietTime />} />
