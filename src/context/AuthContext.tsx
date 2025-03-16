@@ -1,10 +1,18 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "../integrations/supabase/client";
 import { toast } from "sonner";
 
+// Extended User type that includes properties we use throughout the app
+export interface ExtendedUser extends User {
+  displayName?: string | null;
+  photoURL?: string | null;
+  isAdmin?: boolean;
+}
+
 type AuthContextType = {
-  user: User | null;
+  user: ExtendedUser | null;
   session: Session | null;
   loading: boolean;
   error: string | null;
@@ -25,10 +33,22 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Function to enhance the user object with additional properties
+  const enhanceUser = (originalUser: User | null): ExtendedUser | null => {
+    if (!originalUser) return null;
+    
+    return {
+      ...originalUser,
+      displayName: originalUser.user_metadata?.full_name || originalUser.email?.split('@')[0] || null,
+      photoURL: originalUser.user_metadata?.avatar_url || null,
+      isAdmin: originalUser.email === "admin@example.com" // Example admin check
+    };
+  };
 
   useEffect(() => {
     // Check for active session on initial load
@@ -45,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (session) {
           setSession(session);
-          setUser(session.user);
+          setUser(enhanceUser(session.user));
         }
       } catch (error: any) {
         console.error("Error getting initial session:", error.message);
@@ -61,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
-        setUser(session?.user ?? null);
+        setUser(enhanceUser(session?.user ?? null));
         setLoading(false);
       }
     );
