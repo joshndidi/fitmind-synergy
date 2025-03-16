@@ -220,7 +220,7 @@ const WorkoutSelection = () => {
         <Card className="glass-card">
           <CardContent className="pt-6">
             <div className="h-64">
-              <WorkoutCalendar />
+              <WorkoutCard />
             </div>
           </CardContent>
           <CardFooter className="border-t border-white/10 pt-4">
