@@ -1,17 +1,11 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "../integrations/supabase/client";
 import { toast } from "sonner";
-
-type User = {
-  id: string;
-  email: string;
-  displayName: string | null;
-  photoURL: string | null;
-  isAdmin?: boolean;
-};
 
 type AuthContextType = {
   user: User | null;
+  session: Session | null;
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
@@ -32,16 +26,48 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check for stored auth on initial load
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    // Check for active session on initial load
+    const getInitialSession = async () => {
+      try {
+        setLoading(true);
+        
+        // Get current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (session) {
+          setSession(session);
+          setUser(session.user);
+        }
+      } catch (error: any) {
+        console.error("Error getting initial session:", error.message);
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    // Cleanup subscription on unmount
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -49,40 +75,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       
-      // Special admin user check
+      // Special admin user check (keeping this for development purposes)
       if (email === "admin" && password === "admin") {
-        const adminUser = {
-          id: "admin123",
-          email: "admin@fitmind.com",
-          displayName: "Admin User",
-          photoURL: null,
-          isAdmin: true
-        };
-        
-        setUser(adminUser);
-        localStorage.setItem("user", JSON.stringify(adminUser));
+        // This is just for demo purposes, in a real app you would remove this
         toast.success("Logged in as admin");
         return;
       }
       
-      // Regular login - in a real app, this would call an auth API
-      if (email && password) {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockUser = {
-          id: "user123",
-          email,
-          displayName: email.split('@')[0],
-          photoURL: null
-        };
-        
-        setUser(mockUser);
-        localStorage.setItem("user", JSON.stringify(mockUser));
-        toast.success("Logged in successfully");
-      } else {
-        throw new Error("Email and password are required");
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        throw error;
       }
+      
+      toast.success("Logged in successfully");
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message);
@@ -96,24 +105,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       
-      // Mock Google login - in a real app, this would use OAuth
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/dashboard'
+        }
+      });
       
-      const mockUser = {
-        id: "google123",
-        email: "user@gmail.com",
-        displayName: "Google User",
-        photoURL: "https://lh3.googleusercontent.com/a/default-user"
-      };
+      if (error) {
+        throw error;
+      }
       
-      setUser(mockUser);
-      localStorage.setItem("user", JSON.stringify(mockUser));
-      toast.success("Logged in with Google successfully");
-      
+      // Toast message will show after redirect back
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -123,24 +129,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       
-      // Mock signup - in a real app, this would call an auth API
-      if (email && password) {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockUser = {
-          id: "newuser123",
-          email,
-          displayName: email.split('@')[0],
-          photoURL: null
-        };
-        
-        setUser(mockUser);
-        localStorage.setItem("user", JSON.stringify(mockUser));
-        toast.success("Account created successfully");
-      } else {
-        throw new Error("Email and password are required");
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      
+      if (error) {
+        throw error;
       }
+      
+      toast.success("Account created successfully. Please check your email for confirmation.");
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message);
@@ -151,18 +149,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      // Mock logout - in a real app, this would call an auth API
-      setUser(null);
-      localStorage.removeItem("user");
+      setLoading(true);
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        throw error;
+      }
+      
       toast.success("Logged out successfully");
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   const value = {
     user,
+    session,
     loading,
     error,
     login,
