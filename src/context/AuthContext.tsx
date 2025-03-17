@@ -149,16 +149,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          // Don't require email verification before allowing sign in
+          data: {
+            email_confirmed: true
+          }
+        }
       });
       
       if (error) {
         throw error;
       }
       
-      toast.success("Account created successfully. Please check your email for confirmation.");
+      // If user was created successfully
+      if (data.user) {
+        // Sign in the user immediately after signup
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (signInError) {
+          throw signInError;
+        }
+        
+        toast.success("Account created successfully! Check your email for confirmation.");
+      }
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message);
