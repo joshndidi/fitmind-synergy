@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
+import { Shield } from "lucide-react";
 
 type AuthFormProps = {
   type: "login" | "signup";
