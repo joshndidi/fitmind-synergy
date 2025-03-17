@@ -219,8 +219,12 @@ const WorkoutSelection = () => {
         
         <Card className="glass-card">
           <CardContent className="pt-6">
-            <div className="h-64">
-              <WorkoutCard />
+            <div className="text-center py-8">
+              <Calendar size={48} className="text-text-muted mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-text-light mb-2">Track Your Workouts</h3>
+              <p className="text-text-muted mb-4">
+                Log your workouts to track your progress and achievements.
+              </p>
             </div>
           </CardContent>
           <CardFooter className="border-t border-white/10 pt-4">
