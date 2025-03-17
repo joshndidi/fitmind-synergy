@@ -13,7 +13,8 @@ import {
   Users, 
   Award, 
   Menu, 
-  X 
+  X,
+  Shield
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -61,6 +62,12 @@ const NavBar = () => {
           <Link to="/dashboard" className="flex items-center space-x-2">
             <Dumbbell className="h-8 w-8 text-primary" />
             <span className="font-bold text-xl text-text-light">FitMind</span>
+            {user?.isAdmin && (
+              <div className="flex items-center ml-2 bg-amber-600 text-white text-xs px-2 py-1 rounded-full">
+                <Shield size={12} className="mr-1" />
+                <span>Admin</span>
+              </div>
+            )}
           </Link>
 
           {/* Desktop Navigation */}

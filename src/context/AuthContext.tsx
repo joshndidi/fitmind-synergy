@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "../integrations/supabase/client";
@@ -42,11 +41,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const enhanceUser = (originalUser: User | null): ExtendedUser | null => {
     if (!originalUser) return null;
     
+    // Check for admin email - using multiple conditions for flexibility
+    const isAdmin = originalUser.email === "admin@admin.com" || 
+                    originalUser.email === "admin@example.com";
+    
     return {
       ...originalUser,
       displayName: originalUser.user_metadata?.full_name || originalUser.email?.split('@')[0] || null,
       photoURL: originalUser.user_metadata?.avatar_url || null,
-      isAdmin: originalUser.email === "admin@example.com" // Example admin check
+      isAdmin: isAdmin
     };
   };
 
@@ -96,9 +99,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       
-      // Special admin user check (keeping this for development purposes)
-      if (email === "admin" && password === "admin") {
-        // This is just for demo purposes, in a real app you would remove this
+      // Special admin user check (keeping this for quick admin access)
+      if ((email === "admin@admin.com" || email === "admin") && password === "admin") {
+        // Create a mock admin user session
+        const mockAdminUser: ExtendedUser = {
+          id: "admin-user-id",
+          email: "admin@admin.com",
+          displayName: "Admin",
+          isAdmin: true,
+          // Adding minimal required User properties
+          app_metadata: {},
+          user_metadata: { isAdmin: true },
+          aud: "authenticated",
+          created_at: new Date().toISOString()
+        };
+        
+        setUser(mockAdminUser);
         toast.success("Logged in as admin");
         return;
       }
