@@ -80,6 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        console.log("Auth state changed:", _event, session);
         setSession(session);
         setUser(enhanceUser(session?.user ?? null));
         setLoading(false);
@@ -149,11 +150,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       
+      // First create the user account
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          // Don't require email verification before allowing sign in
+          // Set email confirmation to true so user can sign in immediately
+          emailRedirectTo: window.location.origin + '/dashboard',
           data: {
             email_confirmed: true
           }
@@ -164,10 +167,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
       
-      // If user was created successfully
+      // If user was created successfully, immediately sign them in
       if (data.user) {
+        console.log("User created successfully:", data.user);
+        
         // Sign in the user immediately after signup
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password
         });
@@ -176,9 +181,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           throw signInError;
         }
         
-        toast.success("Account created successfully! Check your email for confirmation.");
+        // Check if sign-in was successful
+        if (signInData.session) {
+          console.log("User signed in successfully:", signInData.session);
+          toast.success("Account created and logged in successfully!");
+        } else {
+          toast.success("Account created! Please check your email for confirmation.");
+        }
       }
     } catch (err: any) {
+      console.error("Signup error:", err);
       setError(err.message);
       toast.error(err.message);
     } finally {
