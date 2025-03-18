@@ -1,42 +1,66 @@
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { SubscriptionProvider } from "./context/SubscriptionContext";
-import ProtectedRoute from "./components/ProtectedRoute";
+import Layout from "./components/Layout";
+import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import WorkoutSelection from "./pages/WorkoutSelection";
-import WorkoutDisplay from "./pages/WorkoutDisplay";
-import Profile from "./pages/Profile";
-import Leaderboard from "./pages/Leaderboard";
-import QuietTime from "./pages/QuietTime";
-import Achievements from "./pages/Achievements";
-import Payments from "./pages/Payments";
 import WorkoutAI from "./pages/WorkoutAI";
+import CalorieTracker from "./pages/CalorieTracker";
+import Profile from "./pages/Profile";
+import WorkoutDisplay from "./pages/WorkoutDisplay";
+import WorkoutSelection from "./pages/WorkoutSelection";
+import Subscription from "./pages/Subscription";
+import QuietTime from "./pages/QuietTime";
+import Social from "./pages/Social";
+import Leaderboard from "./pages/Leaderboard";
+import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
+import SubscriptionRoute from "./components/SubscriptionRoute";
 
-function App() {
-  return (
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <SubscriptionProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/workout-selection" element={<ProtectedRoute><WorkoutSelection /></ProtectedRoute>} />
-            <Route path="/workout-display/:id" element={<ProtectedRoute><WorkoutDisplay /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-            <Route path="/quiet-time" element={<ProtectedRoute><QuietTime /></ProtectedRoute>} />
-            <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
-            <Route path="/payments" element={<Payments />} />
-            <Route path="/workout-ai" element={<ProtectedRoute><WorkoutAI /></ProtectedRoute>} />
-          </Routes>
-        </Router>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/workout-ai" element={
+                  <SubscriptionRoute>
+                    <WorkoutAI />
+                  </SubscriptionRoute>
+                } />
+                <Route path="/calorie-tracker" element={
+                  <SubscriptionRoute>
+                    <CalorieTracker />
+                  </SubscriptionRoute>
+                } />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/workouts" element={<WorkoutSelection />} />
+                <Route path="/workout-display/:id" element={<WorkoutDisplay />} />
+                <Route path="/subscription" element={<Subscription />} />
+                <Route path="/quiet-time" element={<QuietTime />} />
+                <Route path="/social" element={<Social />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
       </SubscriptionProvider>
     </AuthProvider>
-  );
-}
+  </QueryClientProvider>
+);
 
 export default App;

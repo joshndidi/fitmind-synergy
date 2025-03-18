@@ -10,13 +10,3 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-
-// Function to call the Stripe payment processing edge function
-export const createCheckoutSession = async (plan: string, redirect_url: string) => {
-  const { data, error } = await supabase.functions.invoke('process-payment', {
-    body: { plan, redirect_url },
-  });
-  
-  if (error) throw error;
-  return data;
-};

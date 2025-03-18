@@ -1,13 +1,14 @@
+
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import { Shield } from "lucide-react";
 
 type AuthFormProps = {
-  mode: "login" | "signup";
+  type: "login" | "signup";
 };
 
-const AuthForm = ({ mode }: AuthFormProps) => {
+const AuthForm = ({ type }: AuthFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { login, signup, loginWithGoogle, loading } = useAuth();
@@ -21,7 +22,7 @@ const AuthForm = ({ mode }: AuthFormProps) => {
     }
     
     try {
-      if (mode === "login") {
+      if (type === "login") {
         await login(email, password);
       } else {
         await signup(email, password);
@@ -39,12 +40,18 @@ const AuthForm = ({ mode }: AuthFormProps) => {
     }
   };
 
-  // Admin login is hidden now - still available but not shown in UI
+  const handleAdminLogin = async () => {
+    try {
+      await login("admin@admin.com", "admin");
+    } catch (error) {
+      console.error("Admin login error:", error);
+    }
+  };
 
   return (
     <div className="glass-card w-full max-w-md p-8 mx-auto animate-fade-in">
       <h2 className="text-2xl font-bold mb-6 text-center text-text-light">
-        {mode === "login" ? "Sign In" : "Create Account"}
+        {type === "login" ? "Sign In" : "Create Account"}
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -89,7 +96,7 @@ const AuthForm = ({ mode }: AuthFormProps) => {
               Loading...
             </span>
           ) : (
-            mode === "login" ? "Sign In" : "Create Account"
+            type === "login" ? "Sign In" : "Create Account"
           )}
         </button>
       </form>
@@ -128,6 +135,17 @@ const AuthForm = ({ mode }: AuthFormProps) => {
             </svg>
             <span>Continue with Google</span>
           </button>
+          
+          {type === "login" && (
+            <button
+              type="button"
+              onClick={handleAdminLogin}
+              className="btn-tertiary w-full flex items-center justify-center gap-2"
+            >
+              <Shield size={18} />
+              <span>Admin access (admin@admin.com / admin)</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
