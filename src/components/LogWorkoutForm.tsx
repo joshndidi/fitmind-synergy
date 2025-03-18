@@ -88,7 +88,7 @@ const LogWorkoutForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       logCustomWorkout(title, exercises);
       
       // Save to database
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('workout_logs')
         .insert([
           {

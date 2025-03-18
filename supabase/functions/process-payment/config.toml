@@ -1,2 +1,6 @@
 
 project_id = "swgswxqxebwaodsyxnib"
+
+[env]
+STRIPE_API_KEY=""
+STRIPE_WEBHOOK_SECRET=""
