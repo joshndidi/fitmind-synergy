@@ -1,82 +1,46 @@
+import React from "react";
 
-import React, { useState, useEffect, useRef } from 'react';
-
-export type QuietTimeSphereProps = {
+export interface QuietTimeSphereProps {
+  color: string;
   isPlaying: boolean;
-  audioSource: string;
-  volume: number;
-};
+  onClick: () => void;
+}
 
-const QuietTimeSphere = ({ isPlaying, audioSource, volume }: QuietTimeSphereProps) => {
-  const [rotation, setRotation] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  
-  useEffect(() => {
-    let animationFrame: number;
-    
-    const rotate = () => {
-      setRotation(prev => (prev + 0.1) % 360);
-      animationFrame = requestAnimationFrame(rotate);
-    };
-    
-    if (isPlaying) {
-      animationFrame = requestAnimationFrame(rotate);
-    }
-    
-    return () => {
-      cancelAnimationFrame(animationFrame);
-    };
-  }, [isPlaying]);
-  
-  useEffect(() => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.play().catch(error => {
-          console.error("Audio playback error:", error);
-        });
-      } else {
-        audioRef.current.pause();
-      }
-    }
-  }, [isPlaying, audioSource]);
-  
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
-    }
-  }, [volume]);
-  
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.src = audioSource;
-      if (isPlaying) {
-        audioRef.current.play().catch(error => {
-          console.error("Audio playback error:", error);
-        });
-      }
-    }
-  }, [audioSource, isPlaying]);
-  
+const QuietTimeSphere = ({ color, isPlaying, onClick }: QuietTimeSphereProps) => {
+  // Implementation of the QuietTimeSphere component
   return (
-    <div className="relative w-60 h-60 mx-auto">
-      <div 
-        className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/70 flex items-center justify-center"
-        style={{ 
-          transform: `rotate(${rotation}deg)`,
-          boxShadow: isPlaying ? '0 0 30px 5px rgba(var(--primary-rgb), 0.3)' : 'none',
-          transition: 'box-shadow 0.5s ease-in-out'
+    <div
+      className={`relative cursor-pointer transition-all duration-500 ease-out ${
+        isPlaying ? "scale-110" : "scale-100 hover:scale-105"
+      }`}
+      onClick={onClick}
+      style={{ width: "220px", height: "220px" }}
+    >
+      <div
+        className="absolute inset-0 rounded-full shadow-lg transition-opacity"
+        style={{
+          background: color,
+          opacity: isPlaying ? 0.8 : 0.6,
         }}
-      >
-        <div className="absolute inset-2 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center">
-          <div className="text-4xl">
-            {isPlaying ? '🎵' : '🔇'}
+      />
+      {isPlaying && (
+        <div className="absolute inset-2 rounded-full animate-pulse opacity-60" style={{ background: color }} />
+      )}
+      {isPlaying && (
+        <div className="absolute inset-4 rounded-full animate-pulse opacity-40" style={{ background: color }} />
+      )}
+      {isPlaying && (
+        <div className="absolute inset-6 rounded-full animate-pulse opacity-20" style={{ background: color }} />
+      )}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="text-2xl font-bold mb-2">
+            {isPlaying ? "Playing" : "Play"}
           </div>
         </div>
       </div>
-      <audio ref={audioRef} loop />
     </div>
   );
 };
 
-export { QuietTimeSphere };
 export default QuietTimeSphere;

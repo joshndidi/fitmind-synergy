@@ -92,7 +92,7 @@ const Index = () => {
               </div>
             </div>
             
-            <AuthForm mode={authType} />
+            <AuthForm type={authType} />
           </div>
         </div>
       </div>
