@@ -3,11 +3,57 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
-import { BarChart3, User, Activity, Calendar, Camera } from "lucide-react";
+import { BarChart3, User, Activity, Calendar, Camera, Trophy, Flame, Dumbbell, Award } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useWorkout } from "@/hooks/useWorkout";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+
+// Add the missing getAchievements function
+const getAchievements = () => {
+  const { completedWorkouts, totalWeightLifted } = useWorkout();
+  
+  const achievements = [
+    {
+      name: "First Workout",
+      description: "Complete your first workout",
+      icon: "🏋️",
+      achieved: completedWorkouts.length >= 1
+    },
+    {
+      name: "Consistent",
+      description: "Complete 5 workouts",
+      icon: "🔥",
+      achieved: completedWorkouts.length >= 5
+    },
+    {
+      name: "Weight Warrior",
+      description: "Lift 1000kg total weight",
+      icon: "💪",
+      achieved: totalWeightLifted >= 1000
+    },
+    {
+      name: "Dedicated",
+      description: "Complete 10 workouts",
+      icon: "🎯",
+      achieved: completedWorkouts.length >= 10
+    },
+    {
+      name: "Strength Master",
+      description: "Lift 5000kg total weight",
+      icon: "🏆",
+      achieved: totalWeightLifted >= 5000
+    },
+    {
+      name: "Fitness Expert",
+      description: "Complete 20 workouts",
+      icon: "⭐",
+      achieved: completedWorkouts.length >= 20
+    }
+  ];
+  
+  return achievements;
+};
 
 const Profile = () => {
   const { user } = useAuth();

@@ -1,14 +1,13 @@
-
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import { Shield } from "lucide-react";
 
 type AuthFormProps = {
-  type: "login" | "signup";
+  mode: "login" | "signup";
 };
 
-const AuthForm = ({ type }: AuthFormProps) => {
+const AuthForm = ({ mode }: AuthFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { login, signup, loginWithGoogle, loading } = useAuth();
@@ -22,7 +21,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
     }
     
     try {
-      if (type === "login") {
+      if (mode === "login") {
         await login(email, password);
       } else {
         await signup(email, password);
@@ -45,7 +44,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
   return (
     <div className="glass-card w-full max-w-md p-8 mx-auto animate-fade-in">
       <h2 className="text-2xl font-bold mb-6 text-center text-text-light">
-        {type === "login" ? "Sign In" : "Create Account"}
+        {mode === "login" ? "Sign In" : "Create Account"}
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -90,7 +89,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
               Loading...
             </span>
           ) : (
-            type === "login" ? "Sign In" : "Create Account"
+            mode === "login" ? "Sign In" : "Create Account"
           )}
         </button>
       </form>
