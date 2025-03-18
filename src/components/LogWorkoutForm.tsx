@@ -1,18 +1,18 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useWorkout } from "@/hooks/useWorkout";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import WorkoutFormHeader from "./workout/WorkoutFormHeader";
+import WorkoutDatePicker from "./workout/WorkoutDatePicker";
+import ExerciseItem from "./workout/ExerciseItem";
 
 const LogWorkoutForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { logCustomWorkout } = useWorkout();
@@ -123,9 +123,7 @@ const LogWorkoutForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   
   return (
     <Card className="glass-card">
-      <CardHeader>
-        <CardTitle className="text-text-light">Log Custom Workout</CardTitle>
-      </CardHeader>
+      <WorkoutFormHeader />
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -144,28 +142,7 @@ const LogWorkoutForm = ({ onSuccess }: { onSuccess?: () => void }) => {
             
             <div className="space-y-2">
               <Label className="text-text-light">Workout Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left border-white/10",
-                      !date && "text-text-muted"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0 pointer-events-auto">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(date) => date && setDate(date)}
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+              <WorkoutDatePicker date={date} onDateChange={(newDate) => newDate && setDate(newDate)} />
             </div>
           </div>
           
@@ -185,76 +162,14 @@ const LogWorkoutForm = ({ onSuccess }: { onSuccess?: () => void }) => {
             
             <div className="space-y-4">
               {exercises.map((exercise, index) => (
-                <div key={index} className="glass-card p-4 space-y-3">
-                  <div className="flex justify-between">
-                    <Label className="text-text-light">Exercise {index + 1}</Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeExercise(index)}
-                      className="text-destructive hover:text-destructive/90"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor={`exercise-name-${index}`} className="text-text-muted text-xs mb-1 block">
-                        Exercise Name
-                      </Label>
-                      <Input
-                        id={`exercise-name-${index}`}
-                        value={exercise.name}
-                        onChange={(e) => updateExercise(index, 'name', e.target.value)}
-                        placeholder="e.g. Bench Press"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label htmlFor={`exercise-sets-${index}`} className="text-text-muted text-xs mb-1 block">
-                          Sets
-                        </Label>
-                        <Input
-                          id={`exercise-sets-${index}`}
-                          type="number"
-                          min="1"
-                          value={exercise.sets}
-                          onChange={(e) => updateExercise(index, 'sets', e.target.value)}
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`exercise-reps-${index}`} className="text-text-muted text-xs mb-1 block">
-                          Reps
-                        </Label>
-                        <Input
-                          id={`exercise-reps-${index}`}
-                          type="number"
-                          min="1"
-                          value={exercise.reps}
-                          onChange={(e) => updateExercise(index, 'reps', e.target.value)}
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`exercise-weight-${index}`} className="text-text-muted text-xs mb-1 block">
-                          Weight (kg)
-                        </Label>
-                        <Input
-                          id={`exercise-weight-${index}`}
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={exercise.weight}
-                          onChange={(e) => updateExercise(index, 'weight', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <ExerciseItem
+                  key={index}
+                  exercise={exercise}
+                  index={index}
+                  onUpdate={updateExercise}
+                  onRemove={removeExercise}
+                  canRemove={exercises.length > 1}
+                />
               ))}
             </div>
           </div>
