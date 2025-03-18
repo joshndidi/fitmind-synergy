@@ -12,24 +12,87 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string
           display_name: string | null
+          fitness_goal: string | null
+          height: number | null
           id: string
           updated_at: string
+          weight: number | null
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           display_name?: string | null
+          fitness_goal?: string | null
+          height?: number | null
           id: string
           updated_at?: string
+          weight?: number | null
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           display_name?: string | null
+          fitness_goal?: string | null
+          height?: number | null
           id?: string
           updated_at?: string
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      quiet_time_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workout_logs: {
+        Row: {
+          calories: number | null
+          completed_at: string
+          exercises: Json
+          id: string
+          title: string
+          total_weight: number
+          user_id: string
+        }
+        Insert: {
+          calories?: number | null
+          completed_at?: string
+          exercises: Json
+          id?: string
+          title: string
+          total_weight: number
+          user_id: string
+        }
+        Update: {
+          calories?: number | null
+          completed_at?: string
+          exercises?: Json
+          id?: string
+          title?: string
+          total_weight?: number
+          user_id?: string
         }
         Relationships: []
       }
