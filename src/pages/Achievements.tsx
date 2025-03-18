@@ -1,232 +1,192 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/context/AuthContext";
+import { Progress } from "@/components/ui/progress";
+import { Trophy, Dumbbell, Calendar, Activity, Zap, Award } from 'lucide-react';
+import { useWorkout } from "@/hooks/useWorkout";
+import { useAuth } from "../context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Award, Dumbbell, Flame, Clock, Trophy, Target } from "lucide-react";
-import { toast } from "sonner";
-
-interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  progress: number;
-  total: number;
-  unlocked: boolean;
-}
 
 const Achievements = () => {
   const { user } = useAuth();
-  const [workoutCount, setWorkoutCount] = useState(0);
-  const [totalWeight, setTotalWeight] = useState(0);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const { completedWorkouts, totalWeightLifted } = useWorkout();
+  const [streakCount, setStreakCount] = useState(0);
   const [loading, setLoading] = useState(true);
-
+  
   useEffect(() => {
     if (user) {
-      fetchUserStats();
+      calculateStreak();
     } else {
       setLoading(false);
     }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      generateAchievements();
-    }
-  }, [workoutCount, totalWeight, user]);
-
-  const fetchUserStats = async () => {
+  }, [user, completedWorkouts]);
+  
+  const calculateStreak = async () => {
     try {
-      setLoading(true);
-
-      // Get workout count
-      const { count: workoutCountResult, error: countError } = await supabase
+      const { data, error } = await supabase
         .from('workout_logs')
-        .select('*', { count: 'exact' })
-        .eq('user_id', user?.id);
-
-      if (countError) throw countError;
-
-      // Get total weight lifted
-      const { data: workouts, error: workoutsError } = await supabase
-        .from('workout_logs')
-        .select('total_weight')
-        .eq('user_id', user?.id);
-
-      if (workoutsError) throw workoutsError;
-
-      // Calculate total weight from all workouts
-      const calculatedTotalWeight = workouts.reduce((sum, workout) => sum + (workout.total_weight || 0), 0);
-
-      setWorkoutCount(workoutCountResult || 0);
-      setTotalWeight(calculatedTotalWeight);
+        .select('completed_at')
+        .eq('user_id', user?.id)
+        .order('completed_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      // Simple streak calculation
+      let streak = 0;
+      let currentDate = new Date();
+      
+      if (data && data.length > 0) {
+        // Sort dates in descending order
+        const sortedDates = data
+          .map(item => new Date(item.completed_at))
+          .sort((a, b) => b.getTime() - a.getTime());
+          
+        // Check for consecutive days
+        let prevDate: Date | null = null;
+        
+        for (const date of sortedDates) {
+          // Format to date string to ignore time
+          const dateStr = date.toDateString();
+          const currentDateStr = currentDate.toDateString();
+          
+          if (prevDate === null) {
+            // First date in streak
+            if (dateStr === currentDateStr || 
+                dateStr === new Date(currentDate.getTime() - 86400000).toDateString()) {
+              streak = 1;
+              prevDate = date;
+            } else {
+              // First workout is not from today or yesterday, no streak
+              break;
+            }
+          } else {
+            const prevDateStr = prevDate.toDateString();
+            const expectedPrevDateStr = new Date(date.getTime() + 86400000).toDateString();
+            
+            if (prevDateStr === expectedPrevDateStr) {
+              // Dates are consecutive
+              streak++;
+              prevDate = date;
+            } else {
+              // Streak is broken
+              break;
+            }
+          }
+        }
+      }
+      
+      setStreakCount(streak);
+      setLoading(false);
     } catch (error) {
-      console.error('Error fetching user stats:', error);
-      toast.error('Failed to load your achievements');
-    } finally {
+      console.error('Error calculating streak:', error);
       setLoading(false);
     }
   };
-
-  const generateAchievements = () => {
-    const achievementsList: Achievement[] = [
-      {
-        id: 'first-workout',
-        title: 'First Steps',
-        description: 'Complete your first workout',
-        icon: <Award className="h-8 w-8 text-yellow-500" />,
-        progress: Math.min(workoutCount, 1),
-        total: 1,
-        unlocked: workoutCount >= 1
-      },
-      {
-        id: 'five-workouts',
-        title: 'Getting Consistent',
-        description: 'Complete 5 workouts',
-        icon: <Dumbbell className="h-8 w-8 text-blue-500" />,
-        progress: Math.min(workoutCount, 5),
-        total: 5,
-        unlocked: workoutCount >= 5
-      },
-      {
-        id: 'ten-workouts',
-        title: 'Workout Warrior',
-        description: 'Complete 10 workouts',
-        icon: <Flame className="h-8 w-8 text-orange-500" />,
-        progress: Math.min(workoutCount, 10),
-        total: 10,
-        unlocked: workoutCount >= 10
-      },
-      {
-        id: 'weight-milestone-1',
-        title: 'Weight Lifter',
-        description: 'Lift a total of 1,000 kg across all workouts',
-        icon: <Trophy className="h-8 w-8 text-purple-500" />,
-        progress: Math.min(totalWeight, 1000),
-        total: 1000,
-        unlocked: totalWeight >= 1000
-      },
-      {
-        id: 'weight-milestone-2',
-        title: 'Heavy Lifter',
-        description: 'Lift a total of 5,000 kg across all workouts',
-        icon: <Trophy className="h-8 w-8 text-indigo-500" />,
-        progress: Math.min(totalWeight, 5000),
-        total: 5000,
-        unlocked: totalWeight >= 5000
-      },
-      {
-        id: 'weight-milestone-3',
-        title: 'Strength Master',
-        description: 'Lift a total of 10,000 kg across all workouts',
-        icon: <Trophy className="h-8 w-8 text-rose-500" />,
-        progress: Math.min(totalWeight, 10000),
-        total: 10000,
-        unlocked: totalWeight >= 10000
-      },
-    ];
-
-    setAchievements(achievementsList);
-  };
-
-  if (!user) {
+  
+  const achievements = [
+    {
+      name: "First Workout",
+      icon: <Trophy className="h-12 w-12 text-yellow-500" />,
+      description: "Complete your first workout",
+      progress: Math.min(completedWorkouts.length, 1),
+      total: 1,
+      achieved: completedWorkouts.length >= 1,
+      color: "bg-yellow-500"
+    },
+    {
+      name: "Consistency Champion",
+      icon: <Calendar className="h-12 w-12 text-green-500" />,
+      description: "Maintain a 5-day workout streak",
+      progress: Math.min(streakCount, 5),
+      total: 5,
+      achieved: streakCount >= 5,
+      color: "bg-green-500"
+    },
+    {
+      name: "Weight Warrior",
+      icon: <Dumbbell className="h-12 w-12 text-blue-500" />,
+      description: "Lift 1000kg total weight",
+      progress: Math.min(totalWeightLifted, 1000),
+      total: 1000,
+      achieved: totalWeightLifted >= 1000,
+      color: "bg-blue-500"
+    },
+    {
+      name: "Workout Master",
+      icon: <Activity className="h-12 w-12 text-purple-500" />,
+      description: "Complete 10 workouts",
+      progress: Math.min(completedWorkouts.length, 10),
+      total: 10,
+      achieved: completedWorkouts.length >= 10,
+      color: "bg-purple-500"
+    },
+    {
+      name: "Iron Legend",
+      icon: <Award className="h-12 w-12 text-red-500" />,
+      description: "Lift 5000kg total weight",
+      progress: Math.min(totalWeightLifted, 5000),
+      total: 5000,
+      achieved: totalWeightLifted >= 5000,
+      color: "bg-red-500"
+    },
+    {
+      name: "Dedication Master",
+      icon: <Zap className="h-12 w-12 text-amber-500" />,
+      description: "Complete 30 workouts",
+      progress: Math.min(completedWorkouts.length, 30),
+      total: 30,
+      achieved: completedWorkouts.length >= 30,
+      color: "bg-amber-500"
+    }
+  ];
+  
+  if (loading) {
     return (
-      <div className="container mx-auto py-10 px-4">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-10">
-            <Trophy className="h-16 w-16 text-muted-foreground mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Sign In to View Achievements</h2>
-            <p className="text-muted-foreground">
-              Log in to track your fitness achievements and milestones.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[70vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
-
+  
   return (
-    <div className="container mx-auto py-10 px-4">
-      <h1 className="text-3xl font-bold mb-6">Your Achievements</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Total Workouts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <Dumbbell className="h-8 w-8 text-primary mr-3" />
-              <span className="text-3xl font-bold">{workoutCount}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Total Weight Lifted</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <Trophy className="h-8 w-8 text-primary mr-3" />
-              <span className="text-3xl font-bold">{totalWeight.toLocaleString()} kg</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Achievements Unlocked</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <Award className="h-8 w-8 text-primary mr-3" />
-              <span className="text-3xl font-bold">
-                {achievements.filter(a => a.unlocked).length}/{achievements.length}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {achievements.map((achievement) => (
+    <div className="container mx-auto px-4 py-8 animate-fade-in">
+      <h1 className="text-3xl font-bold mb-8 text-text-light">Achievements</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {achievements.map((achievement, index) => (
           <Card 
-            key={achievement.id} 
-            className={`transition-all ${
-              achievement.unlocked 
-                ? "border-primary" 
-                : "opacity-75"
-            }`}
+            key={index} 
+            className={`glass-card ${achievement.achieved ? 'border-2 border-primary/30' : ''} hover:shadow-lg transition-all`}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <div className={`rounded-full p-2 ${achievement.unlocked ? "bg-primary/10" : "bg-muted"}`}>
-                  {achievement.icon}
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-center mb-1">
-                    <h3 className="font-bold">{achievement.title}</h3>
-                    {achievement.unlocked && (
-                      <Badge variant="outline" className="border-green-500 text-green-500">Unlocked</Badge>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground text-sm mb-3">{achievement.description}</p>
-                  
-                  <div className="w-full bg-secondary rounded-full h-2.5 mb-1">
-                    <div 
-                      className="bg-primary h-2.5 rounded-full" 
-                      style={{ width: `${(achievement.progress / achievement.total) * 100}%` }}
-                    />
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Progress: {achievement.progress}/{achievement.total}
-                  </div>
-                </div>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-text-light">{achievement.name}</CardTitle>
+              <div className={`p-2 rounded-full ${achievement.achieved ? 'bg-primary/20' : 'bg-gray-800'}`}>
+                {achievement.icon}
               </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-text-muted">{achievement.description}</div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-text-light">Progress</span>
+                  <span className="text-text-light">
+                    {achievement.progress} / {achievement.total}
+                  </span>
+                </div>
+                <Progress 
+                  value={(achievement.progress / achievement.total) * 100} 
+                  className={`h-2 ${achievement.achieved ? achievement.color : ''}`}
+                />
+              </div>
+              
+              {achievement.achieved && (
+                <div className="mt-2 text-center">
+                  <span className="inline-block px-3 py-1 bg-primary/20 text-primary rounded-full text-sm">
+                    Achievement Unlocked!
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
