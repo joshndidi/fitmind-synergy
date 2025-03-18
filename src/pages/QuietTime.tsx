@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -213,7 +212,7 @@ const QuietTime = () => {
                         onClick={() => deleteNote(note.id)}
                         className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
