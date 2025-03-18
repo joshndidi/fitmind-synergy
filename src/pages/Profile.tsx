@@ -1,15 +1,20 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { BarChart3, User, Activity, Calendar, Camera } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useWorkout } from "@/hooks/useWorkout";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Profile = () => {
   const { user } = useAuth();
+  const { completedWorkouts, totalWeightLifted } = useWorkout();
   const [editing, setEditing] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
   const [formData, setFormData] = useState({
     displayName: user?.displayName || "",
@@ -19,23 +24,96 @@ const Profile = () => {
     goal: "Build muscle and improve mental focus"
   });
 
+  useEffect(() => {
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+        
+      if (error) throw error;
+      
+      setUserProfile(data);
+      
+      // Update form data with profile info
+      setFormData(prev => ({
+        ...prev,
+        displayName: data?.display_name || user?.displayName || user?.email?.split('@')[0] || "",
+        bio: data?.bio || prev.bio,
+        height: data?.height?.toString() || prev.height,
+        weight: data?.weight?.toString() || prev.weight,
+        goal: data?.fitness_goal || prev.goal
+      }));
+      
+      setLoading(false);
+    } catch (error: any) {
+      console.error('Error fetching profile:', error.message);
+      setLoading(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Save profile changes (would connect to backend in real app)
-    setEditing(false);
-    toast.success("Profile updated successfully");
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user?.id,
+          display_name: formData.displayName,
+          bio: formData.bio,
+          height: parseInt(formData.height),
+          weight: parseInt(formData.weight),
+          fitness_goal: formData.goal,
+          updated_at: new Date().toISOString()
+        });
+        
+      if (error) throw error;
+      
+      toast.success("Profile updated successfully");
+      setEditing(false);
+      fetchUserProfile();
+    } catch (error: any) {
+      console.error('Error updating profile:', error.message);
+      toast.error("Failed to update profile");
+    }
+  };
+
+  // Calculate workout stats
+  const getTotalCalories = () => {
+    return completedWorkouts.reduce((total, workout) => total + workout.calories, 0);
+  };
+
+  const getCurrentStreak = () => {
+    // Simplified streak calculation
+    return Math.min(14, completedWorkouts.length);
   };
 
   const stats = [
-    { label: "Workouts", value: "32", icon: <Activity className="h-5 w-5 text-primary" /> },
-    { label: "Calories Burned", value: "9,840", icon: <BarChart3 className="h-5 w-5 text-primary" /> },
-    { label: "Streak", value: "14 days", icon: <Calendar className="h-5 w-5 text-primary" /> },
+    { label: "Workouts", value: completedWorkouts.length.toString(), icon: <Activity className="h-5 w-5 text-primary" /> },
+    { label: "Calories Burned", value: getTotalCalories().toLocaleString(), icon: <BarChart3 className="h-5 w-5 text-primary" /> },
+    { label: "Streak", value: `${getCurrentStreak()} days`, icon: <Calendar className="h-5 w-5 text-primary" /> },
   ];
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[70vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
@@ -59,7 +137,11 @@ const Profile = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="flex flex-col items-center mb-6">
                   <Avatar className="h-24 w-24 border-4 border-primary/20">
-                    <User className="h-12 w-12" />
+                    {user?.photoURL ? (
+                      <img src={user.photoURL} alt={formData.displayName} />
+                    ) : (
+                      <User className="h-12 w-12" />
+                    )}
                   </Avatar>
                   <Button variant="ghost" className="mt-2 text-primary">
                     <Camera className="h-4 w-4 mr-2" /> Change Photo
@@ -134,7 +216,7 @@ const Profile = () => {
                 <div className="flex flex-col items-center mb-6">
                   <Avatar className="h-24 w-24 border-4 border-primary/20">
                     {user?.photoURL ? (
-                      <img src={user.photoURL} alt={user.displayName || ""} />
+                      <img src={user.photoURL} alt={formData.displayName} />
                     ) : (
                       <User className="h-12 w-12" />
                     )}
@@ -192,29 +274,38 @@ const Profile = () => {
                 </div>
               ))}
               
-              <Button className="w-full bg-primary text-white">
+              <Button 
+                className="w-full bg-primary text-white"
+                onClick={() => window.location.href = '/achievements'}
+              >
                 View Detailed Stats
               </Button>
             </div>
           </CardContent>
         </Card>
         
-        {/* Achievement Card */}
+        {/* Recent Achievements Card */}
         <Card className="glass-card lg:col-span-3">
           <CardHeader>
             <CardTitle className="text-text-light">Recent Achievements</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {['First Workout', 'Week Streak', 'Personal Best', 'Goal Reached'].map((achievement, index) => (
+              {getAchievements().filter(a => a.achieved).slice(0, 4).map((achievement, index) => (
                 <div key={index} className="glass-card-hover p-4 text-center">
                   <div className="bg-primary/10 p-3 rounded-full mx-auto mb-3 w-fit">
-                    <Activity className="h-6 w-6 text-primary" />
+                    <div className="text-3xl">{achievement.icon}</div>
                   </div>
-                  <h3 className="text-text-light font-medium">{achievement}</h3>
-                  <p className="text-text-muted text-sm">Mar {10 + index}, 2025</p>
+                  <h3 className="text-text-light font-medium">{achievement.name}</h3>
+                  <p className="text-text-muted text-sm">{achievement.description}</p>
                 </div>
               ))}
+              
+              {getAchievements().filter(a => a.achieved).length === 0 && (
+                <div className="col-span-4 text-center py-8">
+                  <p className="text-text-muted">Complete workouts to earn achievements!</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

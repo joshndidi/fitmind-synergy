@@ -40,13 +40,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
     }
   };
 
-  const handleAdminLogin = async () => {
-    try {
-      await login("admin@admin.com", "admin");
-    } catch (error) {
-      console.error("Admin login error:", error);
-    }
-  };
+  // Admin login is hidden now - still available but not shown in UI
 
   return (
     <div className="glass-card w-full max-w-md p-8 mx-auto animate-fade-in">
@@ -135,17 +129,6 @@ const AuthForm = ({ type }: AuthFormProps) => {
             </svg>
             <span>Continue with Google</span>
           </button>
-          
-          {type === "login" && (
-            <button
-              type="button"
-              onClick={handleAdminLogin}
-              className="btn-tertiary w-full flex items-center justify-center gap-2"
-            >
-              <Shield size={18} />
-              <span>Admin access (admin@admin.com / admin)</span>
-            </button>
-          )}
         </div>
       </div>
     </div>
