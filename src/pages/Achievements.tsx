@@ -1,120 +1,94 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Medal, Target, Flame, Dumbbell, Calendar, Award, Star } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Achievement {
   id: string;
-  title: string;
+  name: string;
   description: string;
-  icon: JSX.Element;
+  icon: string;
   progress: number;
   total: number;
-  completed: boolean;
-  category: 'workout' | 'strength' | 'cardio' | 'consistency';
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  dateEarned?: string;
+  is_completed: boolean;
+  completed_at?: string;
 }
 
-const Achievements = () => {
-  const [achievements] = useState<Achievement[]>([
-    {
-      id: '1',
-      title: 'First Steps',
-      description: 'Complete your first workout',
-      icon: <Trophy className="h-6 w-6" />,
-      progress: 1,
-      total: 1,
-      completed: true,
-      category: 'workout',
-      rarity: 'common',
-      dateEarned: '2024-03-15'
-    },
-    {
-      id: '2',
-      title: 'Strength Master',
-      description: 'Lift 1000kg total weight',
-      icon: <Dumbbell className="h-6 w-6" />,
-      progress: 850,
-      total: 1000,
-      completed: false,
-      category: 'strength',
-      rarity: 'epic'
-    },
-    {
-      id: '3',
-      title: 'Consistency King',
-      description: 'Complete workouts for 30 consecutive days',
-      icon: <Flame className="h-6 w-6" />,
-      progress: 12,
-      total: 30,
-      completed: false,
-      category: 'consistency',
-      rarity: 'legendary'
-    },
-    {
-      id: '4',
-      title: 'Cardio Champion',
-      description: 'Run a total of 100km',
-      icon: <Target className="h-6 w-6" />,
-      progress: 75,
-      total: 100,
-      completed: false,
-      category: 'cardio',
-      rarity: 'rare'
-    },
-    {
-      id: '5',
-      title: 'Early Bird',
-      description: 'Complete 10 morning workouts',
-      icon: <Calendar className="h-6 w-6" />,
-      progress: 10,
-      total: 10,
-      completed: true,
-      category: 'consistency',
-      rarity: 'common',
-      dateEarned: '2024-03-10'
-    },
-    {
-      id: '6',
-      title: 'Weight Warrior',
-      description: 'Set 5 personal records in strength exercises',
-      icon: <Award className="h-6 w-6" />,
-      progress: 3,
-      total: 5,
-      completed: false,
-      category: 'strength',
-      rarity: 'rare'
-    }
-  ]);
+export default function Achievements() {
+  const { user } = useAuth();
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const stats = {
-    totalAchievements: achievements.length,
-    completedAchievements: achievements.filter(a => a.completed).length,
-    rarity: {
-      common: achievements.filter(a => a.rarity === 'common').length,
-      rare: achievements.filter(a => a.rarity === 'rare').length,
-      epic: achievements.filter(a => a.rarity === 'epic').length,
-      legendary: achievements.filter(a => a.rarity === 'legendary').length
+  useEffect(() => {
+    fetchAchievements();
+  }, []);
+
+  const fetchAchievements = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('achievements')
+        .select(`
+          *,
+          user_achievements!inner(
+            progress,
+            completed_at
+          )
+        `)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      const formattedAchievements = data.map(achievement => ({
+        id: achievement.id,
+        name: achievement.name,
+        description: achievement.description,
+        icon: achievement.icon,
+        progress: achievement.user_achievements[0]?.progress || 0,
+        total: achievement.total,
+        is_completed: achievement.user_achievements[0]?.completed_at !== null,
+        completed_at: achievement.user_achievements[0]?.completed_at
+      }));
+
+      setAchievements(formattedAchievements);
+    } catch (error) {
+      console.error('Error fetching achievements:', error);
+      toast.error('Failed to load achievements');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case 'common':
-        return 'bg-gray-500';
-      case 'rare':
-        return 'bg-blue-500';
-      case 'epic':
-        return 'bg-purple-500';
-      case 'legendary':
-        return 'bg-yellow-500';
+  const getIcon = (icon: string) => {
+    switch (icon) {
+      case 'trophy':
+        return <Trophy className="h-6 w-6 text-yellow-500" />;
+      case 'medal':
+        return <Medal className="h-6 w-6 text-blue-500" />;
+      case 'award':
+        return <Award className="h-6 w-6 text-purple-500" />;
+      case 'star':
+        return <Star className="h-6 w-6 text-orange-500" />;
+      case 'target':
+        return <Target className="h-6 w-6 text-red-500" />;
+      case 'flame':
+        return <Flame className="h-6 w-6 text-orange-500" />;
       default:
-        return 'bg-gray-500';
+        return <Trophy className="h-6 w-6 text-yellow-500" />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 animate-fade-in">
@@ -140,20 +114,20 @@ const Achievements = () => {
               <TabsContent key={category} value={category}>
                 <div className="grid gap-4 grid-cols-1">
                   {achievements
-                    .filter(achievement => category === 'all' || achievement.category === category)
+                    .filter(achievement => category === 'all' || achievement.icon === category)
                     .map(achievement => (
-                      <Card key={achievement.id} className={`transition-all duration-300 ${achievement.completed ? 'border-primary/50' : ''}`}>
+                      <Card key={achievement.id} className={`transition-all duration-300 ${achievement.is_completed ? 'border-primary/50' : ''}`}>
                         <CardContent className="pt-6">
                           <div className="flex items-start gap-4">
-                            <div className={`p-3 rounded-lg ${getRarityColor(achievement.rarity)} text-white`}>
-                              {achievement.icon}
+                            <div className={`p-3 rounded-lg ${getRarityColor(achievement.icon)} text-white`}>
+                              {getIcon(achievement.icon)}
                             </div>
                             <div className="flex-1">
                               <div className="flex items-start justify-between">
                                 <div>
                                   <h3 className="font-semibold flex items-center gap-2">
-                                    {achievement.title}
-                                    {achievement.completed && (
+                                    {achievement.name}
+                                    {achievement.is_completed && (
                                       <Badge variant="secondary" className="ml-2">
                                         Completed
                                       </Badge>
@@ -162,7 +136,7 @@ const Achievements = () => {
                                   <p className="text-sm text-muted-foreground">{achievement.description}</p>
                                 </div>
                                 <Badge>
-                                  {achievement.rarity.charAt(0).toUpperCase() + achievement.rarity.slice(1)}
+                                  {achievement.icon.charAt(0).toUpperCase() + achievement.icon.slice(1)}
                                 </Badge>
                               </div>
                               <div className="mt-4 space-y-2">
@@ -172,9 +146,9 @@ const Achievements = () => {
                                 </div>
                                 <Progress value={(achievement.progress / achievement.total) * 100} />
                               </div>
-                              {achievement.dateEarned && (
+                              {achievement.completed_at && (
                                 <p className="text-sm text-muted-foreground mt-2">
-                                  Earned on {new Date(achievement.dateEarned).toLocaleDateString()}
+                                  Earned on {new Date(achievement.completed_at).toLocaleDateString()}
                                 </p>
                               )}
                             </div>
@@ -202,24 +176,24 @@ const Achievements = () => {
                   <div className="flex justify-between items-center mb-2">
                     <span>Total Progress</span>
                     <span className="font-medium">
-                      {stats.completedAchievements} / {stats.totalAchievements}
+                      {achievements.filter(a => a.is_completed).length} / {achievements.length}
                     </span>
                   </div>
                   <Progress 
-                    value={(stats.completedAchievements / stats.totalAchievements) * 100} 
+                    value={(achievements.filter(a => a.is_completed).length / achievements.length) * 100} 
                   />
                 </div>
 
                 <div className="space-y-4">
                   <h4 className="font-medium">Rarity Breakdown</h4>
                   <div className="space-y-3">
-                    {Object.entries(stats.rarity).map(([rarity, count]) => (
-                      <div key={rarity} className="flex items-center justify-between">
+                    {achievements.map((achievement) => (
+                      <div key={achievement.icon} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${getRarityColor(rarity)}`} />
-                          <span className="capitalize">{rarity}</span>
+                          <div className={`w-3 h-3 rounded-full ${getRarityColor(achievement.icon)}`} />
+                          <span className="capitalize">{achievement.icon}</span>
                         </div>
-                        <span>{count}</span>
+                        <span>{achievements.filter(a => a.icon === achievement.icon).length}</span>
                       </div>
                     ))}
                   </div>
@@ -238,18 +212,18 @@ const Achievements = () => {
             <CardContent>
               <div className="space-y-4">
                 {achievements
-                  .filter(a => a.completed)
-                  .sort((a, b) => new Date(b.dateEarned!).getTime() - new Date(a.dateEarned!).getTime())
+                  .filter(a => a.is_completed)
+                  .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())
                   .slice(0, 3)
                   .map(achievement => (
                     <div key={achievement.id} className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${getRarityColor(achievement.rarity)} text-white`}>
-                        {achievement.icon}
+                      <div className={`p-2 rounded-lg ${getRarityColor(achievement.icon)} text-white`}>
+                        {getIcon(achievement.icon)}
                       </div>
                       <div>
-                        <p className="font-medium">{achievement.title}</p>
+                        <p className="font-medium">{achievement.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(achievement.dateEarned!).toLocaleDateString()}
+                          {new Date(achievement.completed_at!).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -261,6 +235,19 @@ const Achievements = () => {
       </div>
     </div>
   );
-};
+}
 
-export default Achievements; 
+const getRarityColor = (rarity: string) => {
+  switch (rarity) {
+    case 'common':
+      return 'bg-gray-500';
+    case 'rare':
+      return 'bg-blue-500';
+    case 'epic':
+      return 'bg-purple-500';
+    case 'legendary':
+      return 'bg-yellow-500';
+    default:
+      return 'bg-gray-500';
+  }
+}; 

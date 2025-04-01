@@ -1,193 +1,185 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Trophy, Medal, Award } from 'lucide-react';
+import { toast } from 'sonner';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Medal, Search, MapPin } from "lucide-react";
-import LeaderboardFilters from "../components/LeaderboardFilters";
-import { useAuth } from "../context/AuthContext";
+interface UserStats {
+  id: string;
+  username: string;
+  avatar_url: string;
+  total_workouts: number;
+  total_duration: number;
+  achievements_completed: number;
+  rank: number;
+}
 
-// Mock leaderboard data
-const leaderboardData = [
-  { id: 1, name: "Alex Johnson", location: "London, UK", totalWeight: 24500, workouts: 32, avatar: null },
-  { id: 2, name: "Maria Garcia", location: "Madrid, Spain", totalWeight: 22800, workouts: 28, avatar: null },
-  { id: 3, name: "David Kim", location: "Seoul, South Korea", totalWeight: 21200, workouts: 30, avatar: null },
-  { id: 4, name: "Sarah Williams", location: "New York, USA", totalWeight: 19800, workouts: 25, avatar: null },
-  { id: 5, name: "Mohammed Al-Fayez", location: "Dubai, UAE", totalWeight: 18500, workouts: 27, avatar: null },
-  { id: 6, name: "Elena Petrova", location: "Moscow, Russia", totalWeight: 17900, workouts: 23, avatar: null },
-  { id: 7, name: "Carlos Mendoza", location: "Mexico City, Mexico", totalWeight: 17200, workouts: 24, avatar: null },
-  { id: 8, name: "Tiffany Chen", location: "Singapore", totalWeight: 16800, workouts: 22, avatar: null },
-  { id: 9, name: "James Wilson", location: "Sydney, Australia", totalWeight: 16500, workouts: 21, avatar: null },
-  { id: 10, name: "Fatima Nkosi", location: "Cape Town, South Africa", totalWeight: 16200, workouts: 20, avatar: null },
-];
-
-const Leaderboard = () => {
+export default function Leaderboard() {
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentFilter, setCurrentFilter] = useState<"global" | "continent" | "country" | "region" | "city" | "nearby">("global");
-  
-  // Filter leaderboard data based on search term
-  const filteredData = leaderboardData.filter(entry => 
-    entry.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const [users, setUsers] = useState<UserStats[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [timeframe, setTimeframe] = useState<'all' | 'month' | 'week'>('all');
 
-  // Get user's position in leaderboard (mock data)
-  const userPosition = 42;
-  const userTotalWeight = 8750;
-  
-  // Get top 3 for highlight
-  const topThree = leaderboardData.slice(0, 3);
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [timeframe]);
+
+  const fetchLeaderboard = async () => {
+    try {
+      let query = supabase
+        .from('profiles')
+        .select(`
+          id,
+          username,
+          avatar_url,
+          workouts(count),
+          workout_logs(duration),
+          achievements(count)
+        `);
+
+      if (timeframe === 'month') {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        query = query.gte('workout_logs.created_at', startOfMonth.toISOString());
+      } else if (timeframe === 'week') {
+        const startOfWeek = new Date();
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+        query = query.gte('workout_logs.created_at', startOfWeek.toISOString());
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const formattedUsers = data.map((user, index) => ({
+        id: user.id,
+        username: user.username,
+        avatar_url: user.avatar_url,
+        total_workouts: user.workouts[0].count || 0,
+        total_duration: user.workout_logs.reduce((acc, log) => acc + (log.duration || 0), 0),
+        achievements_completed: user.achievements[0].count || 0,
+        rank: index + 1
+      }));
+
+      // Sort by total workouts and achievements
+      formattedUsers.sort((a, b) => {
+        const scoreA = a.total_workouts * 2 + a.achievements_completed;
+        const scoreB = b.total_workouts * 2 + b.achievements_completed;
+        return scoreB - scoreA;
+      });
+
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      toast.error('Failed to load leaderboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRankIcon = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return <Trophy className="h-6 w-6 text-yellow-500" />;
+      case 2:
+        return <Medal className="h-6 w-6 text-gray-400" />;
+      case 3:
+        return <Award className="h-6 w-6 text-amber-600" />;
+      default:
+        return <span className="text-lg font-bold">{rank}</span>;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <h1 className="text-3xl font-bold mb-8 text-text-light">Leaderboard</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
-        {/* Top 3 Cards */}
-        {topThree.map((entry, index) => (
-          <Card key={entry.id} className={`glass-card ${index === 0 ? 'lg:col-span-2' : ''}`}>
-            <CardContent className="p-6 flex items-center gap-4">
-              <div className={`h-16 w-16 rounded-full flex items-center justify-center text-2xl font-bold 
-                ${index === 0 ? 'bg-yellow-500/20 text-yellow-500' : 
-                  index === 1 ? 'bg-gray-400/20 text-gray-400' : 
-                  'bg-amber-700/20 text-amber-700'}`}
-              >
-                {index === 0 ? (
-                  <Trophy className="h-8 w-8" />
-                ) : (
-                  <Medal className="h-8 w-8" />
-                )}
-              </div>
-              
-              <div className="flex-1">
-                <h3 className="font-bold text-text-light text-lg">{entry.name}</h3>
-                <div className="flex items-center gap-1 text-text-muted text-sm">
-                  <MapPin className="h-3 w-3" /> {entry.location}
-                </div>
-                <div className="mt-2">
-                  <span className="text-primary font-bold">{entry.totalWeight.toLocaleString()} kg</span>
-                  <span className="text-text-muted text-sm ml-2">({entry.workouts} workouts)</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold text-text-light mb-4">Leaderboard</h1>
+        <p className="text-xl text-text-muted">
+          See how you stack up against other fitness enthusiasts
+        </p>
       </div>
-      
-      {/* Leaderboard filters & search */}
-      <div className="glass-card p-6 mb-8">
-        <div className="flex flex-col lg:flex-row justify-between gap-4 mb-6">
-          <LeaderboardFilters 
-            currentFilter={currentFilter} 
-            onFilterChange={setCurrentFilter} 
-          />
-          
-          <div className="flex items-center glass-card px-3 py-2 max-w-md w-full lg:w-auto">
-            <Search className="h-5 w-5 text-text-muted mr-2" />
-            <input
-              type="text"
-              placeholder="Search users or locations..."
-              className="bg-transparent border-none flex-1 text-text-light focus:outline-none"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-        
-        {/* User's position */}
-        <div className="glass-card p-4 flex items-center gap-4 mb-6 border border-primary/30">
-          <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-            {userPosition}
-          </div>
-          
-          <div className="flex-1">
-            <div className="flex items-center">
-              <h3 className="font-bold text-text-light">
-                {user?.displayName || user?.email?.split('@')[0] || "You"}
-              </h3>
-              <span className="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs rounded-full">You</span>
-            </div>
-            <div className="text-text-muted text-sm">Your current position</div>
-          </div>
-          
-          <div className="text-right">
-            <p className="text-primary font-bold">{userTotalWeight.toLocaleString()} kg</p>
-            <p className="text-text-muted text-sm">17 workouts</p>
-          </div>
-        </div>
-        
-        {/* Full leaderboard table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-text-muted border-b border-white/10">
-                <th className="py-3 px-4 text-left">Rank</th>
-                <th className="py-3 px-4 text-left">Name</th>
-                <th className="py-3 px-4 text-left">Location</th>
-                <th className="py-3 px-4 text-right">Total Weight</th>
-                <th className="py-3 px-4 text-right">Workouts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredData.map((entry, index) => (
-                <tr key={entry.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="py-4 px-4">
-                    <div className="flex items-center">
-                      <span className="font-bold text-text-light">{index + 1}</span>
-                      {index < 3 && (
-                        <span className="ml-2">
-                          {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 font-medium text-text-light">{entry.name}</td>
-                  <td className="py-4 px-4 text-text-muted">{entry.location}</td>
-                  <td className="py-4 px-4 text-right font-bold text-primary">{entry.totalWeight.toLocaleString()} kg</td>
-                  <td className="py-4 px-4 text-right text-text-muted">{entry.workouts}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        {filteredData.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-text-muted">No results found for "{searchTerm}"</p>
-          </div>
-        )}
-      </div>
-      
-      <Card className="glass-card">
+
+      <Card className="mb-8">
         <CardHeader>
-          <CardTitle className="text-text-light">How Rankings Work</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Top Performers</span>
+            <div className="flex gap-2">
+              <button
+                className={`px-3 py-1 rounded-full text-sm ${
+                  timeframe === 'all'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+                onClick={() => setTimeframe('all')}
+              >
+                All Time
+              </button>
+              <button
+                className={`px-3 py-1 rounded-full text-sm ${
+                  timeframe === 'month'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+                onClick={() => setTimeframe('month')}
+              >
+                This Month
+              </button>
+              <button
+                className={`px-3 py-1 rounded-full text-sm ${
+                  timeframe === 'week'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+                onClick={() => setTimeframe('week')}
+              >
+                This Week
+              </button>
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-text-muted mb-6">
-            The leaderboard rankings are calculated based on the total weight lifted across all your workouts.
-            This is calculated by multiplying the weight by the number of reps for each exercise.
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="glass-card p-4">
-              <h3 className="font-medium text-text-light mb-2">Weight x Reps</h3>
-              <p className="text-text-muted text-sm">Each exercise's total is calculated by multiplying the weight by the number of reps completed.</p>
-            </div>
-            
-            <div className="glass-card p-4">
-              <h3 className="font-medium text-text-light mb-2">Regular Updates</h3>
-              <p className="text-text-muted text-sm">Leaderboards are updated in real-time as users complete and log their workouts.</p>
-            </div>
-            
-            <div className="glass-card p-4">
-              <h3 className="font-medium text-text-light mb-2">Location Based</h3>
-              <p className="text-text-muted text-sm">Filter by location to see how you rank globally or against people in your area.</p>
-            </div>
+          <div className="space-y-4">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className={`flex items-center justify-between p-4 rounded-lg ${
+                  user.id === user?.id ? 'bg-primary/10' : 'bg-muted/50'
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    {getRankIcon(user.rank)}
+                    <Avatar>
+                      <AvatarImage src={user.avatar_url} />
+                      <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  </div>
+                  <div>
+                    <p className="font-medium">{user.username}</p>
+                    <p className="text-sm text-text-muted">
+                      {user.total_workouts} workouts • {user.achievements_completed} achievements
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">{user.total_duration} min</p>
+                  <p className="text-sm text-text-muted">Total Duration</p>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
     </div>
   );
-};
-
-export default Leaderboard;
+}

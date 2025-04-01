@@ -1,357 +1,263 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar } from "@/components/ui/avatar";
-import { BarChart3, User, Activity, Calendar, Camera, Settings, Trophy, BarChart2 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import { toast } from "sonner";
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dumbbell, Activity, Trophy, Target, Flame, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
 
-interface ProfileStats {
-  totalWorkouts: number;
-  totalWeight: number;
+interface UserProfile {
+  username: string;
+  avatar_url: string;
+  bio: string;
+  total_workouts: number;
+  total_duration: number;
+  achievements_completed: number;
   streak: number;
-  achievements: number;
+  join_date: string;
 }
 
-const Profile = () => {
+export default function Profile() {
   const { user } = useAuth();
-  const [editing, setEditing] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    displayName: user?.displayName || "",
-    bio: "Fitness enthusiast focused on strength training and mental wellness",
-    height: "180",
-    weight: "75",
-    age: "30",
-    gender: "male",
-    fitnessLevel: "intermediate",
-    goal: "Build muscle and improve mental focus"
+    username: '',
+    bio: '',
   });
 
-  const stats: ProfileStats = {
-    totalWorkouts: 48,
-    totalWeight: 5280,
-    streak: 12,
-    achievements: 8
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          username,
+          avatar_url,
+          bio,
+          created_at,
+          workouts(count),
+          workout_logs(duration),
+          achievements(count),
+          streaks(current_streak)
+        `)
+        .eq('id', user?.id)
+        .single();
+
+      if (error) throw error;
+
+      setProfile({
+        username: data.username,
+        avatar_url: data.avatar_url,
+        bio: data.bio || '',
+        total_workouts: data.workouts[0].count || 0,
+        total_duration: data.workout_logs.reduce((acc, log) => acc + (log.duration || 0), 0),
+        achievements_completed: data.achievements[0].count || 0,
+        streak: data.streaks[0]?.current_streak || 0,
+        join_date: data.created_at,
+      });
+
+      setFormData({
+        username: data.username,
+        bio: data.bio || '',
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast.error('Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const handleUpdateProfile = async () => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: formData.username,
+          bio: formData.bio,
+        })
+        .eq('id', user?.id);
+
+      if (error) throw error;
+
+      setProfile(prev => prev ? {
+        ...prev,
+        username: formData.username,
+        bio: formData.bio,
+      } : null);
+      setIsEditing(false);
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
-    setEditing(false);
-    toast.success("Profile updated successfully");
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
-  const handleUpdateProfile = () => {
-    // Here you would typically make an API call to update the profile
-    toast.success('Profile updated successfully');
-  };
+  if (!profile) {
+    return (
+      <div className="text-center">
+        <p className="text-text-muted">Profile not found</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto py-6 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-4xl font-bold flex items-center gap-2">
-          <User className="h-8 w-8" />
-          Profile
-        </h1>
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold text-text-light mb-4">Profile</h1>
+        <p className="text-xl text-text-muted">
+          Manage your profile and view your fitness journey
+        </p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="stats">Statistics</TabsTrigger>
-          <TabsTrigger value="achievements">Achievements</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="profile">
-          <div className="grid gap-6 grid-cols-1 md:grid-cols-12">
-            <div className="md:col-span-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex flex-col items-center">
-                    <div className="relative">
-                      <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center">
-                        {user?.photoURL ? (
-                          <img src={user.photoURL} alt={user.displayName || ""} />
-                        ) : (
-                          <User className="w-16 h-16 text-primary" />
-                        )}
-                      </div>
-                      <Button
-                        size="icon"
-                        className="absolute bottom-0 right-0 rounded-full"
-                        variant="outline"
-                      >
-                        <Camera className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <h2 className="mt-4 text-xl font-semibold">{formData.displayName || user?.email?.split('@')[0] || "User"}</h2>
-                    <p className="text-sm text-muted-foreground">{user?.email}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    <div className="text-center p-4 rounded-lg bg-primary/10">
-                      <div className="text-2xl font-bold">{stats.totalWorkouts}</div>
-                      <div className="text-sm text-muted-foreground">Workouts</div>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-primary/10">
-                      <div className="text-2xl font-bold">{stats.streak}</div>
-                      <div className="text-sm text-muted-foreground">Day Streak</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="md:col-span-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Personal Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Full Name</Label>
-                      <Input
-                        value={formData.displayName}
-                        onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input
-                        type="email"
-                        value={user?.email || ""}
-                        onChange={(e) => {
-                          // Handle email change
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Height (cm)</Label>
-                      <Input
-                        type="number"
-                        value={formData.height}
-                        onChange={(e) => setFormData(prev => ({ ...prev, height: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Weight (kg)</Label>
-                      <Input
-                        type="number"
-                        value={formData.weight}
-                        onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Age</Label>
-                      <Input
-                        type="number"
-                        value={formData.age}
-                        onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Gender</Label>
-                      <Select
-                        value={formData.gender}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Fitness Level</Label>
-                      <Select
-                        value={formData.fitnessLevel}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, fitnessLevel: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="beginner">Beginner</SelectItem>
-                          <SelectItem value="intermediate">Intermediate</SelectItem>
-                          <SelectItem value="advanced">Advanced</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <Button className="w-full" onClick={handleUpdateProfile}>
-                    Save Changes
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="stats">
-          <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart2 className="h-5 w-5" />
-                  Workout Statistics
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span>Total Workouts</span>
-                    <span className="font-bold">{stats.totalWorkouts}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Total Weight Lifted</span>
-                    <span className="font-bold">{stats.totalWeight}kg</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Current Streak</span>
-                    <span className="font-bold">{stats.streak} days</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Achievements Earned</span>
-                    <span className="font-bold">{stats.achievements}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Activity Calendar
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                  Activity calendar visualization would go here
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="achievements">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5" />
-                Achievements
-              </CardTitle>
+              <CardTitle>Profile Information</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  { name: 'First Workout', description: 'Complete your first workout', completed: true },
-                  { name: 'Weight Milestone', description: 'Lift 1000kg total', completed: true },
-                  { name: 'Streak Master', description: 'Maintain a 7-day streak', completed: true },
-                  { name: 'Variety King', description: 'Try all workout types', completed: false },
-                  { name: 'Early Bird', description: 'Complete 5 morning workouts', completed: true },
-                  { name: 'Consistency', description: 'Work out 20 times in a month', completed: false }
-                ].map((achievement, index) => (
-                  <div
-                    key={index}
-                    className={`p-4 rounded-lg border ${
-                      achievement.completed ? 'bg-primary/10 border-primary/20' : 'bg-muted/10 border-muted/20'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Trophy className={`h-4 w-4 ${achievement.completed ? 'text-primary' : 'text-muted-foreground'}`} />
-                      <h3 className="font-medium">{achievement.name}</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">{achievement.description}</p>
-                  </div>
-                ))}
+              <div className="flex items-center gap-6 mb-6">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={profile.avatar_url} />
+                  <AvatarFallback>{profile.username[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h2 className="text-2xl font-bold text-text-light">{profile.username}</h2>
+                  <p className="text-text-muted">Member since {new Date(profile.join_date).toLocaleDateString()}</p>
+                </div>
               </div>
+
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Username</Label>
+                    <Input
+                      id="username"
+                      value={formData.username}
+                      onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <Input
+                      id="bio"
+                      value={formData.bio}
+                      onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsEditing(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleUpdateProfile}>
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-medium text-text-light mb-2">Bio</h3>
+                    <p className="text-text-muted">{profile.bio || 'No bio yet'}</p>
+                  </div>
+                  <Button onClick={() => setIsEditing(true)}>
+                    Edit Profile
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="settings">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Settings
-              </CardTitle>
+              <CardTitle>Statistics</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>Notification Preferences</Label>
-                <Select defaultValue="all">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Notifications</SelectItem>
-                    <SelectItem value="important">Important Only</SelectItem>
-                    <SelectItem value="none">None</SelectItem>
-                  </SelectContent>
-                </Select>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="glass-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Dumbbell className="h-5 w-5 text-primary" />
+                    <h3 className="font-medium">Total Workouts</h3>
+                  </div>
+                  <p className="text-2xl font-bold text-text-light">{profile.total_workouts}</p>
+                </div>
+                <div className="glass-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="h-5 w-5 text-primary" />
+                    <h3 className="font-medium">Total Duration</h3>
+                  </div>
+                  <p className="text-2xl font-bold text-text-light">{profile.total_duration} min</p>
+                </div>
+                <div className="glass-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Trophy className="h-5 w-5 text-primary" />
+                    <h3 className="font-medium">Achievements</h3>
+                  </div>
+                  <p className="text-2xl font-bold text-text-light">{profile.achievements_completed}</p>
+                </div>
+                <div className="glass-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Flame className="h-5 w-5 text-primary" />
+                    <h3 className="font-medium">Current Streak</h3>
+                  </div>
+                  <p className="text-2xl font-bold text-text-light">{profile.streak} days</p>
+                </div>
               </div>
-
-              <div className="space-y-2">
-                <Label>Unit System</Label>
-                <Select defaultValue="metric">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="metric">Metric (kg, cm)</SelectItem>
-                    <SelectItem value="imperial">Imperial (lbs, in)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Language</Label>
-                <Select defaultValue="en">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                    <SelectItem value="fr">French</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button className="w-full">Save Settings</Button>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-primary/20">
+                    <Calendar className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Joined FitMind</p>
+                    <p className="text-sm text-text-muted">
+                      {new Date(profile.join_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-primary/20">
+                    <Target className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">First Workout</p>
+                    <p className="text-sm text-text-muted">
+                      {profile.total_workouts > 0 ? 'Completed' : 'Not started yet'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
-
-export default Profile;
