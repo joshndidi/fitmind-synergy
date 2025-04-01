@@ -72,9 +72,8 @@ const Leaderboard = () => {
     const fetchLeaderboardData = async () => {
       setLoading(true);
       try {
-        let query = supabase
-          .from("leaderboard_data")
-          .select("*");
+        // Using a raw query to access the view since it's not in the TypeScript definitions
+        let query = supabase.from('leaderboard_data').select('*');
         
         // Apply location filters
         if (currentFilter === "country" && userProfile?.country) {
@@ -90,8 +89,29 @@ const Leaderboard = () => {
           query = query.or(`display_name.ilike.%${searchTerm}%,country.ilike.%${searchTerm}%,province.ilike.%${searchTerm}%`);
         }
         
-        // Fetch total count for pagination
-        const { count } = await query.count();
+        // Count total records for pagination
+        const countQuery = supabase.from('leaderboard_data').select('id', { count: 'exact' });
+        
+        // Apply same filters to count query
+        if (currentFilter === "country" && userProfile?.country) {
+          countQuery.eq("country", userProfile.country);
+        } else if (currentFilter === "region" && userProfile?.province) {
+          countQuery
+            .eq("country", userProfile.country)
+            .eq("province", userProfile.province);
+        }
+        
+        if (searchTerm) {
+          countQuery.or(`display_name.ilike.%${searchTerm}%,country.ilike.%${searchTerm}%,province.ilike.%${searchTerm}%`);
+        }
+        
+        const { count, error: countError } = await countQuery;
+        
+        if (countError) throw countError;
+        
+        if (count !== null) {
+          setTotalPages(Math.ceil(count / itemsPerPage));
+        }
         
         // Fetch paginated data
         const { data, error } = await query
@@ -100,11 +120,7 @@ const Leaderboard = () => {
         
         if (error) throw error;
         
-        if (count) {
-          setTotalPages(Math.ceil(count / itemsPerPage));
-        }
-        
-        setLeaderboardData(data || []);
+        setLeaderboardData(data as LeaderboardEntry[]);
       } catch (error) {
         console.error("Error fetching leaderboard data:", error);
         toast.error("Failed to load leaderboard data");
@@ -155,13 +171,6 @@ const Leaderboard = () => {
     
     return null;
   };
-  
-  // Filter leaderboard data based on search term
-  const filteredData = leaderboardData.filter(entry => 
-    (entry.display_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (entry.country || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (entry.province || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
   
   // Get top 3 for highlight
   const topThree = leaderboardData.slice(0, 3);
@@ -346,7 +355,7 @@ const Leaderboard = () => {
                     Loading leaderboard data...
                   </TableCell>
                 </TableRow>
-              ) : filteredData.length === 0 ? (
+              ) : leaderboardData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 text-text-muted">
                     {searchTerm 
@@ -355,7 +364,7 @@ const Leaderboard = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((entry, index) => {
+                leaderboardData.map((entry, index) => {
                   const rank = (currentPage - 1) * itemsPerPage + index + 1;
                   const isCurrentUser = user && entry.id === user.id;
                   
