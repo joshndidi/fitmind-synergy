@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
@@ -82,6 +81,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
             required
           />
         </div>
+        
         <button
           type="submit"
           disabled={loading}
@@ -101,7 +101,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
         </button>
       </form>
       
-      <div className="mt-4 text-center">
+      <div className="mt-6">
         <p className="text-text-muted text-sm mb-4">or</p>
         
         <div className="space-y-3">

@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { SubscriptionProvider, useSubscription } from "@/context/SubscriptionContext";
 import NavBar from "@/components/NavBar";
-import Home from "@/pages/Home";
+import Index from "@/pages/Index";
 import Dashboard from "@/pages/Dashboard";
 import WorkoutSelection from "@/pages/WorkoutSelection";
 import WorkoutCreation from "@/pages/WorkoutCreation";
@@ -28,40 +28,130 @@ import { WorkoutStatsPage } from "@/pages/WorkoutStatsPage";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/dashboard" />;
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-dark">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/" />;
+  }
+
   return <>{children}</>;
 }
 
 function SubscriptionRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { isActive } = useSubscription();
-  if (!user) return <Navigate to="/dashboard" />;
-  if (!isActive) return <Navigate to="/subscription" />;
+  
+  if (!user) {
+    return <Navigate to="/" />;
+  }
+  
+  if (!isActive) {
+    return <Navigate to="/subscription" />;
+  }
+  
   return <>{children}</>;
 }
 
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/workouts" element={<ProtectedRoute><WorkoutPlans /></ProtectedRoute>} />
-      <Route path="/templates" element={<ProtectedRoute><WorkoutTemplates /></ProtectedRoute>} />
-      <Route path="/workouts/create" element={<ProtectedRoute><WorkoutCreation /></ProtectedRoute>} />
-      <Route path="/workouts/:id/edit" element={<ProtectedRoute><WorkoutEdit /></ProtectedRoute>} />
-      <Route path="/workout-display/:id" element={<ProtectedRoute><WorkoutDisplay /></ProtectedRoute>} />
-      <Route path="/workout-ai" element={<SubscriptionRoute><WorkoutAI /></SubscriptionRoute>} />
-      <Route path="/calories" element={<ProtectedRoute><CalorieTracker /></ProtectedRoute>} />
-      <Route path="/social" element={<ProtectedRoute><Social /></ProtectedRoute>} />
-      <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
-      <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
-      <Route path="/workouts/:id/execute" element={<ProtectedRoute><WorkoutExecutionPage /></ProtectedRoute>} />
-      <Route path="/stats" element={<ProtectedRoute><WorkoutStatsPage /></ProtectedRoute>} />
+      {/* Public routes */}
+      <Route path="/" element={<Index />} />
       
+      {/* Protected routes */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/workouts" element={
+        <ProtectedRoute>
+          <WorkoutSelection />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/workout-ai" element={
+        <SubscriptionRoute>
+          <WorkoutAI />
+        </SubscriptionRoute>
+      } />
+      
+      <Route path="/calories" element={
+        <ProtectedRoute>
+          <CalorieTracker />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/social" element={
+        <ProtectedRoute>
+          <Social />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/achievements" element={
+        <ProtectedRoute>
+          <Achievements />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/leaderboard" element={
+        <ProtectedRoute>
+          <Leaderboard />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <Profile />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <Settings />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/subscription" element={
+        <ProtectedRoute>
+          <Subscription />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/workout-templates" element={
+        <ProtectedRoute>
+          <WorkoutTemplates />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/workout-plans" element={
+        <ProtectedRoute>
+          <WorkoutPlans />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/workout-execution/:id" element={
+        <ProtectedRoute>
+          <WorkoutExecutionPage />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/workout-stats/:id" element={
+        <ProtectedRoute>
+          <WorkoutStatsPage />
+        </ProtectedRoute>
+      } />
+      
+      {/* Catch all route */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

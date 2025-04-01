@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -25,7 +24,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-dark flex flex-col justify-center items-center px-4 py-12">
       <div className={`w-full max-w-4xl mx-auto transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`}>
-        <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-center">
+        <div className="grid md:grid-cols-2 gap-8 items-center">
           {/* Left side - App info */}
           <div className="flex-1 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
@@ -66,7 +65,7 @@ const Index = () => {
           </div>
           
           {/* Right side - Auth form */}
-          <div className="flex-1 w-full max-w-md">
+          <div className="flex-1">
             <div className="bg-black/30 backdrop-blur-xl p-4 rounded-2xl border border-white/5 mb-6">
               <div className="flex">
                 <button
