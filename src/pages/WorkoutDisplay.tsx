@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Clock, BarChart3, Dumbbell, ArrowLeft, CheckCircle2 } from "lucide-react";
@@ -11,7 +10,7 @@ import WorkoutActions from "../components/WorkoutActions";
 const WorkoutDisplay = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getWorkoutById, completeWorkout, workouts } = useWorkout();
+  const { getWorkoutById, completeWorkout, workouts, updateWorkoutProgress, getWorkoutProgress } = useWorkout();
   
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [completed, setCompleted] = useState<boolean[]>([]);
@@ -21,7 +20,7 @@ const WorkoutDisplay = () => {
   
   // Load workout and progress
   useEffect(() => {
-    const loadWorkout = () => {
+    const loadWorkout = async () => {
       setLoading(true);
       
       if (workouts.length === 0) {
@@ -49,16 +48,14 @@ const WorkoutDisplay = () => {
       
       setWorkout(targetWorkout);
       
-      // Load saved progress from localStorage
-      const savedProgressKey = `workout-progress-${targetWorkout.id}`;
-      const savedProgress = localStorage.getItem(savedProgressKey);
+      // Load saved progress
+      const savedProgress = await getWorkoutProgress(targetWorkout.id);
       
       if (savedProgress) {
-        const parsedProgress = JSON.parse(savedProgress);
-        setCompleted(parsedProgress);
+        setCompleted(savedProgress);
         
         // Check if all exercises are completed
-        if (parsedProgress.every((item: boolean) => item === true)) {
+        if (savedProgress.every((item: boolean) => item === true)) {
           setIsWorkoutComplete(true);
         }
       } else {
@@ -74,15 +71,18 @@ const WorkoutDisplay = () => {
     }, 100);
     
     return () => clearTimeout(timer);
-  }, [id, navigate, getWorkoutById, workouts]);
+  }, [id, navigate, getWorkoutById, workouts, getWorkoutProgress]);
 
   // Save progress when completed state changes
   useEffect(() => {
-    if (workout && completed.length > 0) {
-      const progressKey = `workout-progress-${workout.id}`;
-      localStorage.setItem(progressKey, JSON.stringify(completed));
-    }
-  }, [completed, workout]);
+    const saveProgress = async () => {
+      if (workout && completed.length > 0) {
+        await updateWorkoutProgress(workout.id, completed);
+      }
+    };
+    
+    saveProgress();
+  }, [completed, workout, updateWorkoutProgress]);
 
   const handleExerciseComplete = (index: number) => {
     const newCompleted = [...completed];
@@ -101,11 +101,6 @@ const WorkoutDisplay = () => {
     if (workout) {
       completeWorkout(workout);
       toast.success("Workout completed! Great job!");
-      
-      // Clear progress after completing
-      const progressKey = `workout-progress-${workout.id}`;
-      localStorage.removeItem(progressKey);
-      
       navigate("/dashboard");
     }
   };
