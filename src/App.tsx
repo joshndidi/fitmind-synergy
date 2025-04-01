@@ -26,6 +26,7 @@ import { WorkoutExecutionPage } from "@/pages/WorkoutExecutionPage";
 import { WorkoutStatsPage } from "@/pages/WorkoutStatsPage";
 import NutritionPage from "@/pages/nutrition";
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import Layout from '@/components/Layout';
 
 const queryClient = new QueryClient();
 
@@ -36,13 +37,21 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Index />} />
       {user ? (
-        <>
+        <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/workouts" element={<WorkoutSelection />} />
           <Route path="/workout/:id" element={<WorkoutExecutionPage />} />
           <Route path="/exercises" element={<WorkoutCreation />} />
           <Route path="/calories" element={<CalorieTracker />} />
           <Route path="/subscription" element={<Subscription />} />
+          <Route path="/social" element={<Social />} />
+          <Route path="/achievements" element={<Achievements />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/workout-templates" element={<WorkoutTemplates />} />
+          <Route path="/workout-plans" element={<WorkoutPlans />} />
+          <Route path="/workout-stats" element={<WorkoutStatsPage />} />
           
           {/* Protected AI Features */}
           <Route
@@ -61,10 +70,11 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
-        </>
+        </Route>
       ) : (
         <Route path="*" element={<Navigate to="/" replace />} />
       )}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
@@ -77,12 +87,7 @@ function App() {
           <Router>
             <TooltipProvider>
               <div className="min-h-screen bg-gradient-dark">
-                <NavBar />
-                <main className="container mx-auto px-4 py-8 pt-20">
-                  <div className="glass-card p-6 rounded-2xl">
-                    <AppRoutes />
-                  </div>
-                </main>
+                <AppRoutes />
                 <Toaster />
               </div>
             </TooltipProvider>
