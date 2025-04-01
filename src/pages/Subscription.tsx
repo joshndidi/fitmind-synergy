@@ -1,100 +1,156 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Check, Crown } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useSubscription } from '@/context/SubscriptionContext';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, Dumbbell } from "lucide-react";
-import SubscriptionCard from "../components/SubscriptionCard";
-import { useAuth } from "../context/AuthContext";
-
-const Subscription = () => {
+export default function Subscription() {
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
-  
-  const premiumPlan = {
-    id: "premium",
-    name: "Premium",
-    price: "£5",
-    period: "month",
-    description: "Unlock the full potential of your fitness and mental wellness",
-    features: [
-      { text: "Track workouts and progress", available: true },
-      { text: "Calculate weight lifted", available: true },
-      { text: "View leaderboard rankings", available: true },
-      { text: "AI Workout Generator", available: true },
-      { text: "AI Calorie Tracker", available: true },
-      { text: "Advanced analytics and insights", available: true },
-      { text: "Unlimited workout history", available: true },
-    ],
+  const { isActive, checkSubscription } = useSubscription();
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect if already subscribed
+  useEffect(() => {
+    if (isActive) {
+      const from = (location.state as any)?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [isActive, navigate, location]);
+
+  const plans = [
+    {
+      name: 'Monthly',
+      price: 5,
+      interval: 'month',
+      priceId: 'price_1R2I15DahQwjhZ7lQ43FTWel', // Replace with your monthly price ID from Stripe
+      features: [
+        'AI Food Recognition',
+        'Personalized Workout Plans',
+        'Progress Tracking',
+        'Premium Support'
+      ]
+    },
+    {
+      name: 'Yearly',
+      price: 50,
+      interval: 'year',
+      priceId: 'price_1R8SGIDahQwjhZ7l3LRvJGkG', // Replace with your yearly price ID from Stripe
+      features: [
+        'AI Food Recognition',
+        'Personalized Workout Plans',
+        'Progress Tracking',
+        'Premium Support',
+        '2 Months Free'
+      ],
+      savings: 'Save 17%'
+    }
+  ];
+
+  const handleSubscribe = async (plan: 'monthly' | 'yearly') => {
+    if (!user) {
+      toast.error('Please sign in to subscribe');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Create a checkout session
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          priceId: plans[plan].priceId,
+          userId: user.id,
+          plan: plan
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create checkout session');
+      }
+
+      const { sessionUrl } = await response.json();
+
+      // Redirect to Stripe Checkout
+      window.location.href = sessionUrl;
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to process subscription');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <h1 className="text-3xl font-bold mb-4 text-text-light">Premium Subscription</h1>
-      <p className="text-text-muted mb-8 max-w-3xl">
-        Upgrade your fitness journey with AI-powered features and personalized recommendations.
-      </p>
-      
-      <div className="mb-12">
-        <SubscriptionCard plan={premiumPlan} />
+    <div className="container mx-auto py-8 space-y-8">
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl font-bold">Upgrade to Premium</h1>
+        <p className="text-muted-foreground max-w-2xl mx-auto">
+          Get access to all premium features and take your fitness journey to the next level
+        </p>
       </div>
-      
-      <div className="glass-card p-6 mb-12">
-        <h2 className="text-2xl font-bold mb-6 text-text-light">Why Go Premium?</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="flex gap-4">
-            <div className="bg-primary/10 p-3 h-fit rounded-full">
-              <Brain className="h-6 w-6 text-primary" />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        {(['monthly', 'yearly'] as const).map((plan) => (
+          <Card
+            key={plan}
+            className={`p-6 space-y-6 relative overflow-hidden ${
+              selectedPlan === plan ? 'ring-2 ring-primary' : ''
+            }`}
+            onClick={() => setSelectedPlan(plan)}
+          >
+            {plan === 'yearly' && (
+              <div className="absolute top-4 right-4">
+                <Crown className="h-6 w-6 text-yellow-500" />
+              </div>
+            )}
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold capitalize">{plan} Plan</h3>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold">{plans[plan].price}</span>
+                <span className="text-muted-foreground">/{plans[plan].interval}</span>
+              </div>
+              {plans[plan].savings && (
+                <div className="text-sm text-green-500 font-medium">
+                  {plans[plan].savings}
+                </div>
+              )}
             </div>
-            <div>
-              <h3 className="text-lg font-medium text-text-light mb-2">AI-Powered Workouts</h3>
-              <p className="text-text-muted">
-                Our AI analyzes your goals, fitness level, and availability to create customized workout plans
-                that adapt as you progress. Get the perfect workout for your specific needs.
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex gap-4">
-            <div className="bg-primary/10 p-3 h-fit rounded-full">
-              <Dumbbell className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-lg font-medium text-text-light mb-2">AI Calorie Tracker</h3>
-              <p className="text-text-muted">
-                Simply take a photo of your meal and our AI will analyze its nutritional content,
-                providing accurate calorie, protein, carbs, and fat estimates to help you stay on track.
-              </p>
-            </div>
-          </div>
-        </div>
+
+            <ul className="space-y-3">
+              {plans[plan].features.map((feature, index) => (
+                <li key={index} className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-green-500" />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+
+            <Button
+              className="w-full"
+              size="lg"
+              disabled={isLoading}
+              onClick={() => handleSubscribe(plan)}
+            >
+              {isLoading ? 'Processing...' : `Subscribe ${plans[plan].price}/${plans[plan].interval}`}
+            </Button>
+          </Card>
+        ))}
       </div>
-      
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="text-text-light">Frequently Asked Questions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {[
-            {
-              question: "How do I cancel my subscription?",
-              answer: "You can cancel your subscription at any time from your account settings. Your premium features will remain active until the end of your billing period."
-            },
-            {
-              question: "Is there a free trial for premium features?",
-              answer: "We occasionally offer free 7-day trials for new users. Check your email for special promotions or contact our support team."
-            },
-            {
-              question: "Will I lose my data if I downgrade?",
-              answer: "No, all your workout history and data will be preserved. However, you'll lose access to premium features like AI workout generation."
-            }
-          ].map((faq, index) => (
-            <div key={index} className="glass-card p-4">
-              <h3 className="text-lg font-medium text-text-light mb-2">{faq.question}</h3>
-              <p className="text-text-muted">{faq.answer}</p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+
+      <div className="text-center text-sm text-muted-foreground mt-8">
+        <p>Secure payment processing. Cancel anytime.</p>
+        <p>VAT may be applicable depending on your location.</p>
+      </div>
     </div>
   );
-};
-
-export default Subscription;
+}

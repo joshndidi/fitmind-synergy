@@ -116,6 +116,17 @@ const NavBar = () => {
               Calories
             </Link>
             <Link
+              to="/nutrition"
+              className={cn(
+                "text-sm font-medium transition-colors",
+                location.pathname === "/nutrition"
+                  ? "text-primary"
+                  : "text-text-muted hover:text-text-light"
+              )}
+            >
+              Nutrition AI
+            </Link>
+            <Link
               to="/social"
               className={cn(
                 "text-sm font-medium transition-colors",
@@ -159,7 +170,7 @@ const NavBar = () => {
             >
               Profile
             </Link>
-            <Link
+              <Link
               to="/settings"
               className={cn(
                 "text-sm font-medium transition-colors",
@@ -169,7 +180,7 @@ const NavBar = () => {
               )}
             >
               Settings
-            </Link>
+              </Link>
           </div>
 
           {/* User Menu */}
@@ -185,7 +196,7 @@ const NavBar = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <button
+          <button 
             className="md:hidden text-text-muted hover:text-text-light"
             onClick={() => setIsOpen(!isOpen)}
           >
@@ -241,6 +252,17 @@ const NavBar = () => {
               Calories
             </Link>
             <Link
+              to="/nutrition"
+              className={cn(
+                "block px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                location.pathname === "/nutrition"
+                  ? "bg-primary/10 text-primary"
+                  : "text-text-muted hover:bg-accent hover:text-text-light"
+              )}
+            >
+              Nutrition AI
+            </Link>
+            <Link
               to="/social"
               className={cn(
                 "block px-4 py-2 text-sm font-medium rounded-lg transition-colors",
@@ -284,7 +306,7 @@ const NavBar = () => {
             >
               Profile
             </Link>
-            <Link
+                <Link
               to="/settings"
               className={cn(
                 "block px-4 py-2 text-sm font-medium rounded-lg transition-colors",
@@ -294,7 +316,7 @@ const NavBar = () => {
               )}
             >
               Settings
-            </Link>
+                </Link>
           </div>
         )}
       </div>

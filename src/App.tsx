@@ -24,135 +24,47 @@ import NotFound from "@/pages/NotFound";
 import { WorkoutPlans } from "@/pages/WorkoutPlans";
 import { WorkoutExecutionPage } from "@/pages/WorkoutExecutionPage";
 import { WorkoutStatsPage } from "@/pages/WorkoutStatsPage";
+import NutritionPage from "@/pages/nutrition";
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-dark">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/" />;
-  }
-
-  return <>{children}</>;
-}
-
-function SubscriptionRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const { isActive } = useSubscription();
-  
-  if (!user) {
-    return <Navigate to="/" />;
-  }
-  
-  if (!isActive) {
-    return <Navigate to="/subscription" />;
-  }
-  
-  return <>{children}</>;
-}
-
 function AppRoutes() {
+  const { user } = useAuth();
+
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/" element={<Index />} />
-      
-      {/* Protected routes */}
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/workouts" element={
-        <ProtectedRoute>
-          <WorkoutSelection />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/workout-ai" element={
-        <SubscriptionRoute>
-          <WorkoutAI />
-        </SubscriptionRoute>
-      } />
-      
-      <Route path="/calories" element={
-        <ProtectedRoute>
-          <CalorieTracker />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/social" element={
-        <ProtectedRoute>
-          <Social />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/achievements" element={
-        <ProtectedRoute>
-          <Achievements />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/leaderboard" element={
-        <ProtectedRoute>
-          <Leaderboard />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/profile" element={
-        <ProtectedRoute>
-          <Profile />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/subscription" element={
-        <ProtectedRoute>
-          <Subscription />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/workout-templates" element={
-        <ProtectedRoute>
-          <WorkoutTemplates />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/workout-plans" element={
-        <ProtectedRoute>
-          <WorkoutPlans />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/workout-execution/:id" element={
-        <ProtectedRoute>
-          <WorkoutExecutionPage />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/workout-stats/:id" element={
-        <ProtectedRoute>
-          <WorkoutStatsPage />
-        </ProtectedRoute>
-      } />
-      
-      {/* Catch all route */}
-      <Route path="*" element={<NotFound />} />
+      {user ? (
+        <>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/workouts" element={<WorkoutSelection />} />
+          <Route path="/workout/:id" element={<WorkoutExecutionPage />} />
+          <Route path="/exercises" element={<WorkoutCreation />} />
+          <Route path="/calories" element={<CalorieTracker />} />
+          <Route path="/subscription" element={<Subscription />} />
+          
+          {/* Protected AI Features */}
+          <Route
+            path="/nutrition"
+            element={
+              <ProtectedRoute>
+                <NutritionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/workout-ai"
+            element={
+              <ProtectedRoute>
+                <WorkoutAI />
+              </ProtectedRoute>
+            }
+          />
+        </>
+      ) : (
+        <Route path="*" element={<Navigate to="/" replace />} />
+      )}
     </Routes>
   );
 }
