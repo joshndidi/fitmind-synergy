@@ -166,8 +166,10 @@ function App() {
             <TooltipProvider>
               <div className="min-h-screen bg-gradient-dark">
                 <NavBar />
-                <main className="pt-16">
-                  <AppRoutes />
+                <main className="container mx-auto px-4 py-8 pt-20">
+                  <div className="glass-card p-6 rounded-2xl">
+                    <AppRoutes />
+                  </div>
                 </main>
                 <Toaster />
               </div>

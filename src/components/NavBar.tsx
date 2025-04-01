@@ -59,7 +59,7 @@ const NavBar = () => {
   return (
     <nav className={cn(
       "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-      scrolled ? "bg-background/80 backdrop-blur-lg shadow-lg" : "bg-transparent"
+      scrolled ? "bg-black/60 backdrop-blur-lg shadow-lg" : "bg-black/30"
     )}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
@@ -195,7 +195,7 @@ const NavBar = () => {
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="md:hidden py-4 space-y-2">
+          <div className="md:hidden py-4 space-y-2 bg-black/60 backdrop-blur-lg rounded-lg mt-2">
             <Link
               to="/dashboard"
               className={cn(
