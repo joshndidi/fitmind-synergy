@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,22 +34,11 @@ import {
 } from "@/components/ui/dialog";
 import LeaderboardFilters from "../components/LeaderboardFilters";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, fetchLeaderboardData, type LeaderboardEntry } from "@/integrations/supabase/client";
 import { useWorkout } from "@/hooks/useWorkout";
 import { toast } from "sonner";
 import LocationProfileForm from "@/components/LocationProfileForm";
 import { getUserDisplayName } from "@/components/UserProfileUtils";
-
-// Define leaderboard entry type
-type LeaderboardEntry = {
-  id: string;
-  display_name: string | null;
-  avatar_url: string | null;
-  country: string | null;
-  province: string | null;
-  total_weight: number;
-  workout_count: number;
-};
 
 const Leaderboard = () => {
   const { user } = useAuth();
@@ -69,58 +57,38 @@ const Leaderboard = () => {
 
   // Load leaderboard data
   useEffect(() => {
-    const fetchLeaderboardData = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        // Using a raw query to access the view since it's not in the TypeScript definitions
-        let query = supabase.from('leaderboard_data').select('*');
+        // Using our helper function
+        const options: {
+          countryFilter?: string;
+          provinceFilter?: string;
+          searchTerm?: string;
+          page: number;
+          itemsPerPage: number;
+        } = {
+          page: currentPage,
+          itemsPerPage
+        };
         
         // Apply location filters
         if (currentFilter === "country" && userProfile?.country) {
-          query = query.eq("country", userProfile.country);
+          options.countryFilter = userProfile.country;
         } else if (currentFilter === "region" && userProfile?.province) {
-          query = query
-            .eq("country", userProfile.country)
-            .eq("province", userProfile.province);
+          options.countryFilter = userProfile.country;
+          options.provinceFilter = userProfile.province;
         }
         
         // Apply search filter
         if (searchTerm) {
-          query = query.or(`display_name.ilike.%${searchTerm}%,country.ilike.%${searchTerm}%,province.ilike.%${searchTerm}%`);
+          options.searchTerm = searchTerm;
         }
         
-        // Count total records for pagination
-        const countQuery = supabase.from('leaderboard_data').select('id', { count: 'exact' });
+        const { data, totalPages: pages } = await fetchLeaderboardData(options);
         
-        // Apply same filters to count query
-        if (currentFilter === "country" && userProfile?.country) {
-          countQuery.eq("country", userProfile.country);
-        } else if (currentFilter === "region" && userProfile?.province) {
-          countQuery
-            .eq("country", userProfile.country)
-            .eq("province", userProfile.province);
-        }
-        
-        if (searchTerm) {
-          countQuery.or(`display_name.ilike.%${searchTerm}%,country.ilike.%${searchTerm}%,province.ilike.%${searchTerm}%`);
-        }
-        
-        const { count, error: countError } = await countQuery;
-        
-        if (countError) throw countError;
-        
-        if (count !== null) {
-          setTotalPages(Math.ceil(count / itemsPerPage));
-        }
-        
-        // Fetch paginated data
-        const { data, error } = await query
-          .order("total_weight", { ascending: false })
-          .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
-        
-        if (error) throw error;
-        
-        setLeaderboardData(data as LeaderboardEntry[]);
+        setLeaderboardData(data);
+        setTotalPages(pages);
       } catch (error) {
         console.error("Error fetching leaderboard data:", error);
         toast.error("Failed to load leaderboard data");
@@ -129,7 +97,7 @@ const Leaderboard = () => {
       }
     };
     
-    fetchLeaderboardData();
+    fetchData();
   }, [currentFilter, searchTerm, userProfile, currentPage, refreshTrigger]);
   
   // Load user's profile and location

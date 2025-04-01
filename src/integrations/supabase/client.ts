@@ -10,3 +10,73 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Define a leaderboard entry type that matches our database view
+export type LeaderboardEntry = {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  country: string | null;
+  province: string | null;
+  total_weight: number;
+  workout_count: number;
+};
+
+// Helper function to run raw queries with proper typing
+export const fetchLeaderboardData = async (
+  options?: {
+    countryFilter?: string;
+    provinceFilter?: string;
+    searchTerm?: string;
+    page?: number;
+    itemsPerPage?: number;
+  }
+) => {
+  const {
+    countryFilter,
+    provinceFilter,
+    searchTerm,
+    page = 1,
+    itemsPerPage = 10
+  } = options || {};
+
+  // Build the query with proper typing for our custom view
+  let query = supabase.from('leaderboard_data').select('*');
+  
+  // Apply filters if provided
+  if (countryFilter) {
+    query = query.eq('country', countryFilter);
+    
+    if (provinceFilter) {
+      query = query.eq('province', provinceFilter);
+    }
+  }
+  
+  // Apply search if provided
+  if (searchTerm) {
+    query = query.or(`display_name.ilike.%${searchTerm}%,country.ilike.%${searchTerm}%,province.ilike.%${searchTerm}%`);
+  }
+  
+  // Get count for pagination
+  const countQuery = structuredClone(query);
+  const { count, error: countError } = await countQuery.count();
+  
+  if (countError) {
+    throw countError;
+  }
+  
+  // Apply pagination and ordering
+  const { data, error } = await query
+    .order('total_weight', { ascending: false })
+    .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
+  
+  if (error) {
+    throw error;
+  }
+  
+  return {
+    data: data as LeaderboardEntry[],
+    count: count || 0,
+    totalPages: Math.ceil((count || 0) / itemsPerPage)
+  };
+};
