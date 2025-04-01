@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ const plans = [
     name: 'Monthly Premium',
     price: '£5',
     interval: 'month',
-    priceId: 'price_XXXXX', // Replace with your actual Stripe price ID
+    priceId: 'price_1Q2W3E4R5T6Y7U8I9O0P', // Replace with your actual Stripe price ID for monthly plan
     features: [
       'AI-Powered Workout Generation',
       'Personalized Nutrition Plans',
@@ -24,7 +24,7 @@ const plans = [
     name: 'Yearly Premium',
     price: '£50',
     interval: 'year',
-    priceId: 'price_YYYYY', // Replace with your actual Stripe price ID
+    priceId: 'price_1Q2W3E4R5T6Y7U8I9O1', // Replace with your actual Stripe price ID for yearly plan
     features: [
       'AI-Powered Workout Generation',
       'Personalized Nutrition Plans',
@@ -41,6 +41,18 @@ export default function Subscription() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+
+  useEffect(() => {
+    // Check for success or cancel URL parameters
+    const params = new URLSearchParams(location.search);
+    if (params.get('success')) {
+      toast.success('Subscription successful! Welcome to premium.');
+      navigate('/dashboard');
+    }
+    if (params.get('canceled')) {
+      toast.error('Subscription canceled. You can try again anytime.');
+    }
+  }, [location, navigate]);
 
   const handleSubscribe = async (priceId: string, plan: string) => {
     if (!user) {
@@ -72,6 +84,7 @@ export default function Subscription() {
         throw new Error('No checkout URL received');
       }
 
+      // Redirect to Stripe Checkout
       window.location.href = data.url;
     } catch (error) {
       console.error('Error creating checkout session:', error);
