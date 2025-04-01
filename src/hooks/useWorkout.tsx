@@ -594,7 +594,12 @@ export const useWorkout = () => {
       
       if (error) throw error;
       
-      return data.completion_status?.progress || null;
+      // Handle different types of completion_status
+      if (data.completion_status && typeof data.completion_status === 'object') {
+        return (data.completion_status as any).progress || null;
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error fetching workout progress:', error);
       return null;
