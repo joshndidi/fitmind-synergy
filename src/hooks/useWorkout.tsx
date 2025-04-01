@@ -2,10 +2,8 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Workout, Exercise } from "../types/workout";
 import { format } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/context/AuthContext";
 
-// Mock workout data for users who aren't logged in or for initial load
+// Mock workout data
 const mockWorkouts: Workout[] = [
   {
     id: "w1",
@@ -100,115 +98,54 @@ const mockWorkouts: Workout[] = [
 ];
 
 export const useWorkout = () => {
-  const { user } = useAuth();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [completedWorkouts, setCompletedWorkouts] = useState<Workout[]>([]);
   const [totalWeightLifted, setTotalWeightLifted] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   
-  // Load workout data on mount or when user changes
+  // Load workout data on mount
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      
-      if (user) {
-        try {
-          // Fetch user's workout plans from Supabase
-          const { data: workoutPlans, error: workoutError } = await supabase
-            .from('workout_plans')
-            .select('*')
-            .order('created_at', { ascending: false });
-          
-          if (workoutError) throw workoutError;
-          
-          // Map the database workouts to our Workout type
-          const formattedWorkouts: Workout[] = workoutPlans.map(plan => ({
-            id: plan.id,
-            title: plan.title,
-            description: plan.description || '',
-            type: plan.type,
-            date: format(new Date(plan.created_at), 'yyyy-MM-dd'),
-            calories: plan.calories,
-            duration: plan.duration,
-            intensity: plan.intensity as "High" | "Medium" | "Low",
-            exercises: plan.exercises as Exercise[],
-            completionStatus: plan.completion_status || {}
-          }));
-          
-          setWorkouts(formattedWorkouts);
-          
-          // Fetch user's completed workouts
-          const { data: completed, error: completedError } = await supabase
-            .from('completed_workouts')
-            .select('*')
-            .order('completed_at', { ascending: false });
-          
-          if (completedError) throw completedError;
-          
-          // Calculate total weight lifted
-          let totalWeight = 0;
-          const formattedCompleted: Workout[] = completed.map(workout => {
-            if (workout.total_weight) {
-              totalWeight += workout.total_weight;
-            }
-            
-            return {
-              id: workout.id,
-              title: workout.title,
-              description: 'Completed workout',
-              type: 'Completed',
-              date: format(new Date(workout.completed_at), 'yyyy-MM-dd'),
-              completedDate: format(new Date(workout.completed_at), 'yyyy-MM-dd'),
-              calories: workout.calories,
-              duration: workout.duration,
-              intensity: 'Medium',
-              exercises: workout.exercises as Exercise[],
-              totalWeight: workout.total_weight
-            };
-          });
-          
-          setCompletedWorkouts(formattedCompleted);
-          setTotalWeightLifted(totalWeight);
-        } catch (error) {
-          console.error('Error fetching workout data:', error);
-          toast.error('Failed to load your workout data');
-          
-          // Fall back to mock data if database fetch fails
-          setWorkouts(mockWorkouts);
-        }
-      } else {
-        // Use mock data for non-authenticated users
-        setWorkouts(mockWorkouts);
-        
-        // Try to load from localStorage as fallback for non-logged in users
-        const storedCompletedWorkouts = localStorage.getItem("completedWorkouts");
-        const storedTotalWeight = localStorage.getItem("totalWeightLifted");
-        
-        if (storedCompletedWorkouts) {
-          setCompletedWorkouts(JSON.parse(storedCompletedWorkouts));
-        }
-        
-        if (storedTotalWeight) {
-          setTotalWeightLifted(Number(storedTotalWeight));
-        }
-      }
-      
-      // Add loading state management
-      setTimeout(() => {
-        setLoading(false);
-      }, 500);
-    };
+    // Load from localStorage if available
+    const storedWorkouts = localStorage.getItem("workouts");
+    const storedCompletedWorkouts = localStorage.getItem("completedWorkouts");
+    const storedTotalWeight = localStorage.getItem("totalWeightLifted");
     
-    loadData();
-  }, [user]);
-  
-  // Save completed workouts to localStorage for non-logged in users
-  useEffect(() => {
-    if (!user && completedWorkouts.length > 0) {
-      localStorage.setItem("completedWorkouts", JSON.stringify(completedWorkouts));
-      localStorage.setItem("totalWeightLifted", totalWeightLifted.toString());
+    if (storedWorkouts) {
+      setWorkouts(JSON.parse(storedWorkouts));
+    } else {
+      // Use mock data if no stored data exists
+      setWorkouts(mockWorkouts);
+      localStorage.setItem("workouts", JSON.stringify(mockWorkouts));
     }
-  }, [completedWorkouts, totalWeightLifted, user]);
+    
+    if (storedCompletedWorkouts) {
+      setCompletedWorkouts(JSON.parse(storedCompletedWorkouts));
+    }
+    
+    if (storedTotalWeight) {
+      setTotalWeightLifted(Number(storedTotalWeight));
+    }
+    
+    // Add loading state management
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Update localStorage when state changes
+  useEffect(() => {
+    if (workouts.length > 0) {
+      localStorage.setItem("workouts", JSON.stringify(workouts));
+    }
+    
+    if (completedWorkouts.length > 0) {
+      localStorage.setItem("completedWorkouts", JSON.stringify(completedWorkouts));
+    }
+    
+    localStorage.setItem("totalWeightLifted", totalWeightLifted.toString());
+  }, [workouts, completedWorkouts, totalWeightLifted]);
   
   const getWorkoutById = (id: string): Workout | null => {
     const workout = workouts.find(w => w.id === id);
@@ -239,119 +176,23 @@ export const useWorkout = () => {
     return totalWeight;
   };
   
-  const saveWorkoutPlan = async (workout: Workout) => {
-    if (!user) {
-      // For non-authenticated users, just add to state
-      setWorkouts(prev => [...prev, workout]);
-      toast.success('Workout plan created!');
-      return workout.id;
-    }
+  const completeWorkout = (workout: Workout) => {
+    // Mark workout as completed
+    const completedWorkout = {
+      ...workout,
+      completedDate: new Date().toISOString()
+    };
     
-    try {
-      // Extract exercises and convert to the right format for the database
-      const { id, date, completedDate, ...workoutData } = workout;
-      
-      // Insert the workout plan into Supabase
-      const { data, error } = await supabase
-        .from('workout_plans')
-        .insert({
-          title: workoutData.title,
-          description: workoutData.description,
-          type: workoutData.type,
-          intensity: workoutData.intensity,
-          duration: workoutData.duration,
-          calories: workoutData.calories,
-          exercises: workoutData.exercises,
-          is_ai_generated: workout.id.startsWith('ai-'),
-          user_id: user.id
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      // Add the new workout to the state with the database ID
-      const newWorkout = {
-        ...workout,
-        id: data.id
-      };
-      
-      setWorkouts(prev => [newWorkout, ...prev]);
-      toast.success('Workout plan saved to your account!');
-      return data.id;
-    } catch (error) {
-      console.error('Error saving workout plan:', error);
-      toast.error('Failed to save workout plan');
-      return null;
-    }
-  };
-  
-  const completeWorkout = async (workout: Workout) => {
-    // Calculate weight lifted
+    setCompletedWorkouts(prev => [...prev, completedWorkout]);
+    
+    // Calculate and add weight lifted
     const weightLifted = calculateWorkoutWeight(workout);
+    setTotalWeightLifted(prev => prev + weightLifted);
     
-    if (user) {
-      try {
-        // Save completed workout to Supabase
-        const { error } = await supabase
-          .from('completed_workouts')
-          .insert({
-            user_id: user.id,
-            workout_plan_id: workout.id.includes('-') ? null : workout.id, // Only store DB IDs
-            title: workout.title,
-            exercises: workout.exercises,
-            duration: workout.duration,
-            calories: workout.calories,
-            total_weight: weightLifted
-          });
-        
-        if (error) throw error;
-        
-        // Update workout completion status if it's a saved workout
-        if (!workout.id.includes('-')) {
-          const { error: updateError } = await supabase
-            .from('workout_plans')
-            .update({
-              completion_status: { completed: true, completedAt: new Date().toISOString() }
-            })
-            .eq('id', workout.id);
-          
-          if (updateError) console.error('Error updating completion status:', updateError);
-        }
-        
-        // Add to state as well
-        const completedWorkout = {
-          ...workout,
-          completedDate: new Date().toISOString(),
-          totalWeight: weightLifted
-        };
-        
-        setCompletedWorkouts(prev => [completedWorkout, ...prev]);
-        setTotalWeightLifted(prev => prev + weightLifted);
-        
-        toast.success(`You've lifted ${weightLifted.toLocaleString()} lbs in this workout!`);
-        
-        // Check for achievements
-        checkAchievements(totalWeightLifted + weightLifted);
-      } catch (error) {
-        console.error('Error completing workout:', error);
-        toast.error('Failed to record completed workout');
-      }
-    } else {
-      // For non-authenticated users, use the localStorage approach
-      const completedWorkout = {
-        ...workout,
-        completedDate: new Date().toISOString()
-      };
-      
-      setCompletedWorkouts(prev => [...prev, completedWorkout]);
-      setTotalWeightLifted(prev => prev + weightLifted);
-      
-      toast.success(`You've lifted ${weightLifted.toLocaleString()} lbs in this workout!`);
-      
-      // Check for achievements
-      checkAchievements(totalWeightLifted + weightLifted);
-    }
+    toast.success(`You've lifted ${weightLifted.toLocaleString()} lbs in this workout!`);
+    
+    // Check for achievements
+    checkAchievements(totalWeightLifted + weightLifted);
   };
   
   const checkAchievements = (totalWeight: number) => {
@@ -374,13 +215,11 @@ export const useWorkout = () => {
     }
   };
   
-  // Function to save AI-generated workout plan
-  const saveAIWorkoutPlan = async (plan: any) => {
+  // New function to save AI-generated workout plan
+  const saveAIWorkoutPlan = (plan: any) => {
     const newWorkouts: Workout[] = [];
     
-    for (let i = 0; i < plan.workouts.length; i++) {
-      const workout = plan.workouts[i];
-      
+    plan.workouts.forEach((workout: any, index: number) => {
       // Format exercises to match our Exercise type
       const exercises: Exercise[] = workout.exercises.map((ex: any) => ({
         name: ex.name,
@@ -398,12 +237,12 @@ export const useWorkout = () => {
       
       // Create a workout with today's date + index days
       const today = new Date();
-      today.setDate(today.getDate() + i);
+      today.setDate(today.getDate() + index);
       const formattedDate = format(today, 'yyyy-MM-dd');
       
       // Create the new workout object
       const newWorkout: Workout = {
-        id: `ai-${Date.now()}-${i}`,
+        id: `ai-${Date.now()}-${index}`,
         title: workout.name,
         description: `${plan.overview} - Day ${workout.day}`,
         calories,
@@ -414,19 +253,11 @@ export const useWorkout = () => {
         date: formattedDate
       };
       
-      // Save to Supabase if user is logged in
-      if (user) {
-        await saveWorkoutPlan(newWorkout);
-      }
-      
       newWorkouts.push(newWorkout);
-    }
+    });
     
-    // If user is not logged in, add directly to state
-    if (!user) {
-      setWorkouts(prev => [...prev, ...newWorkouts]);
-    }
-    
+    // Add the new workouts to the existing workouts
+    setWorkouts(prev => [...prev, ...newWorkouts]);
     toast.success(`Added ${newWorkouts.length} workouts to your plan!`);
     
     return newWorkouts;
@@ -436,12 +267,12 @@ export const useWorkout = () => {
   const getLoggedWorkouts = () => {
     return completedWorkouts.map(workout => ({
       ...workout,
-      totalWeight: workout.totalWeight || calculateWorkoutWeight(workout)
+      totalWeight: calculateWorkoutWeight(workout)
     }));
   };
   
   // Function to log a custom workout
-  const logCustomWorkout = async (title: string, exercises: Exercise[]) => {
+  const logCustomWorkout = (title: string, exercises: Exercise[]) => {
     const workout: Workout = {
       id: `custom-${Date.now()}`,
       title,
@@ -455,49 +286,17 @@ export const useWorkout = () => {
       completedDate: format(new Date(), 'yyyy-MM-dd')
     };
     
-    // Calculate weight lifted
-    const weightLifted = calculateWorkoutWeight(workout);
+    // Add to completed workouts
+    setCompletedWorkouts(prev => [...prev, workout]);
     
-    if (user) {
-      try {
-        // Save directly to completed_workouts in Supabase
-        const { error } = await supabase
-          .from('completed_workouts')
-          .insert({
-            user_id: user.id,
-            title: workout.title,
-            exercises: workout.exercises,
-            duration: workout.duration,
-            calories: workout.calories,
-            total_weight: weightLifted
-          });
-        
-        if (error) throw error;
-        
-        // Add to state with calculated weight
-        const completedWorkout = {
-          ...workout,
-          totalWeight: weightLifted
-        };
-        
-        setCompletedWorkouts(prev => [completedWorkout, ...prev]);
-        setTotalWeightLifted(prev => prev + weightLifted);
-        
-        toast.success(`Custom workout logged: ${workout.title}!`);
-        
-        // Check for achievements
-        checkAchievements(totalWeightLifted + weightLifted);
-      } catch (error) {
-        console.error('Error logging custom workout:', error);
-        toast.error('Failed to log workout');
-      }
-    } else {
-      // For non-authenticated users, just use local state
-      setCompletedWorkouts(prev => [...prev, workout]);
-      setTotalWeightLifted(prev => prev + weightLifted);
-      toast.success(`Custom workout logged: ${workout.title}!`);
-      checkAchievements(totalWeightLifted + weightLifted);
-    }
+    // Calculate and add weight lifted
+    const weightLifted = calculateWorkoutWeight(workout);
+    setTotalWeightLifted(prev => prev + weightLifted);
+    
+    toast.success(`Custom workout logged: ${workout.title}!`);
+    
+    // Check for achievements
+    checkAchievements(totalWeightLifted + weightLifted);
   };
   
   // Function to get achievements based on total weight lifted
@@ -547,65 +346,6 @@ export const useWorkout = () => {
     }));
   };
   
-  // Update progress of a workout
-  const updateWorkoutProgress = async (workoutId: string, progress: boolean[]) => {
-    if (!user) {
-      // For non-authenticated users, store in localStorage
-      const progressKey = `workout-progress-${workoutId}`;
-      localStorage.setItem(progressKey, JSON.stringify(progress));
-      return true;
-    }
-    
-    try {
-      const { error } = await supabase
-        .from('workout_plans')
-        .update({
-          completion_status: {
-            progress,
-            lastUpdated: new Date().toISOString()
-          }
-        })
-        .eq('id', workoutId);
-      
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Error updating workout progress:', error);
-      toast.error('Failed to save progress');
-      return false;
-    }
-  };
-  
-  // Get progress for a workout
-  const getWorkoutProgress = async (workoutId: string): Promise<boolean[] | null> => {
-    if (!user) {
-      // For non-authenticated users, get from localStorage
-      const progressKey = `workout-progress-${workoutId}`;
-      const savedProgress = localStorage.getItem(progressKey);
-      return savedProgress ? JSON.parse(savedProgress) : null;
-    }
-    
-    try {
-      const { data, error } = await supabase
-        .from('workout_plans')
-        .select('completion_status')
-        .eq('id', workoutId)
-        .single();
-      
-      if (error) throw error;
-      
-      // Handle different types of completion_status
-      if (data.completion_status && typeof data.completion_status === 'object') {
-        return (data.completion_status as any).progress || null;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error fetching workout progress:', error);
-      return null;
-    }
-  };
-  
   return {
     workouts,
     completedWorkouts,
@@ -616,10 +356,7 @@ export const useWorkout = () => {
     saveAIWorkoutPlan,
     logCustomWorkout,
     getAchievements,
-    loggedWorkouts: getLoggedWorkouts(),
-    saveWorkoutPlan,
-    updateWorkoutProgress,
-    getWorkoutProgress
+    loggedWorkouts: getLoggedWorkouts()
   };
 };
 

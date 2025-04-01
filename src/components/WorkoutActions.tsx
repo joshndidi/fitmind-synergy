@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,6 @@ import WorkoutCalendar from "./WorkoutCalendar";
 import LogWorkoutForm from "./LogWorkoutForm";
 import { useWorkout } from "@/hooks/useWorkout";
 import { toast } from "sonner";
-import { useAuth } from "@/context/AuthContext";
 
 type ExerciseInput = {
   name: string;
@@ -42,12 +42,12 @@ type WorkoutFormData = {
   duration: number;
   intensity: string;
   calories: number;
+  exercises: ExerciseInput[];
 };
 
 const WorkoutActions = () => {
   const navigate = useNavigate();
-  const { workouts, logCustomWorkout, saveWorkoutPlan } = useWorkout();
-  const { user } = useAuth();
+  const { workouts, logCustomWorkout, getWorkoutById } = useWorkout();
   const [openDialog, setOpenDialog] = useState<string | null>(null);
   const [exercises, setExercises] = useState<ExerciseInput[]>([{
     name: "",
@@ -73,25 +73,11 @@ const WorkoutActions = () => {
   };
 
   const handleAddPlan = () => {
-    // Check if user is logged in
-    if (!user) {
-      toast.error("Please log in to create a workout plan");
-      navigate("/auth");
-      return;
-    }
-    
     // Open the add plan dialog
     setOpenDialog("addPlan");
   };
 
   const handleLogWorkout = () => {
-    // Check if user is logged in
-    if (!user) {
-      toast.error("Please log in to log a workout");
-      navigate("/auth");
-      return;
-    }
-    
     // Open the log workout dialog
     setOpenDialog("logWorkout");
   };
@@ -137,7 +123,7 @@ const WorkoutActions = () => {
     setExercises(updatedExercises);
   };
 
-  const onSubmitWorkout = async (data: WorkoutFormData) => {
+  const onSubmitWorkout = (data: WorkoutFormData) => {
     // Validate exercises
     const validExercises = exercises.filter(ex => ex.name.trim() !== "");
     
@@ -171,18 +157,17 @@ const WorkoutActions = () => {
       date: new Date().toISOString()
     };
     
-    // Save to Supabase using our hook
-    const savedId = await saveWorkoutPlan(newWorkout);
+    // Use the logCustomWorkout function to save the workout
+    logCustomWorkout(data.title, formattedExercises);
+    
+    // Show success message
+    toast.success("Workout plan created successfully!");
     
     // Close the dialog and reset the form
     closeDialog();
     
-    // Navigate to the dashboard or the new workout
-    if (savedId) {
-      navigate(`/workout-display/${savedId}`);
-    } else {
-      navigate("/dashboard");
-    }
+    // Navigate to the dashboard
+    navigate(`/dashboard`);
   };
 
   return (
