@@ -594,7 +594,7 @@ export const useWorkout = () => {
       
       if (error) throw error;
       
-      return data.completion_status.progress || null;
+      return data.completion_status?.progress || null;
     } catch (error) {
       console.error('Error fetching workout progress:', error);
       return null;
