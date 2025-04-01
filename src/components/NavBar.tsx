@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useWorkout } from "../hooks/useWorkout";
+import { useSubscription } from "@/context/SubscriptionContext";
 import { 
   Activity, 
   Home, 
@@ -19,7 +20,8 @@ import {
   Settings,
   Flame,
   LayoutTemplate,
-  BarChart
+  BarChart,
+  Crown
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -29,6 +31,7 @@ import { LogOut } from "lucide-react";
 const NavBar = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { isActive } = useSubscription();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -170,7 +173,7 @@ const NavBar = () => {
             >
               Profile
             </Link>
-              <Link
+            <Link
               to="/settings"
               className={cn(
                 "text-sm font-medium transition-colors",
@@ -180,7 +183,21 @@ const NavBar = () => {
               )}
             >
               Settings
+            </Link>
+            {!isActive && (
+              <Link
+                to="/subscription"
+                className={cn(
+                  "text-sm font-medium transition-colors flex items-center gap-2",
+                  location.pathname === "/subscription"
+                    ? "text-primary"
+                    : "text-text-muted hover:text-text-light"
+                )}
+              >
+                <Crown className="h-4 w-4" />
+                Upgrade
               </Link>
+            )}
           </div>
 
           {/* User Menu */}
@@ -306,7 +323,7 @@ const NavBar = () => {
             >
               Profile
             </Link>
-                <Link
+            <Link
               to="/settings"
               className={cn(
                 "block px-4 py-2 text-sm font-medium rounded-lg transition-colors",
@@ -316,7 +333,21 @@ const NavBar = () => {
               )}
             >
               Settings
-                </Link>
+            </Link>
+            {!isActive && (
+              <Link
+                to="/subscription"
+                className={cn(
+                  "block px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2",
+                  location.pathname === "/subscription"
+                    ? "bg-primary/10 text-primary"
+                    : "text-text-muted hover:bg-accent hover:text-text-light"
+                )}
+              >
+                <Crown className="h-4 w-4" />
+                Upgrade
+              </Link>
+            )}
           </div>
         )}
       </div>

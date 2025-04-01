@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
 
 export default function SubscriptionSuccess() {
   const navigate = useNavigate();
@@ -15,7 +15,11 @@ export default function SubscriptionSuccess() {
   useEffect(() => {
     const activateSubscription = async () => {
       const sessionId = searchParams.get('session_id');
-      if (!sessionId || !user) return;
+      if (!sessionId || !user) {
+        toast.error('Invalid subscription session');
+        navigate('/subscription');
+        return;
+      }
 
       try {
         // In a real app, you would verify the session with Stripe
@@ -32,7 +36,10 @@ export default function SubscriptionSuccess() {
             ).toISOString(),
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase error:', error);
+          throw new Error('Failed to update subscription status');
+        }
 
         // Refresh subscription status
         await checkSubscription();
@@ -45,7 +52,7 @@ export default function SubscriptionSuccess() {
         }, 2000);
       } catch (error) {
         console.error('Error activating subscription:', error);
-        toast.error('Failed to activate subscription');
+        toast.error(error instanceof Error ? error.message : 'Failed to activate subscription');
         navigate('/subscription');
       }
     };
@@ -60,6 +67,10 @@ export default function SubscriptionSuccess() {
       <p className="text-muted-foreground">
         Your subscription is being activated...
       </p>
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>Please wait...</span>
+      </div>
     </div>
   );
 } 

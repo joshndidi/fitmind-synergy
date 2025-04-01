@@ -75,16 +75,21 @@ export default function Subscription() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create checkout session');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create checkout session');
       }
 
       const { sessionUrl } = await response.json();
+
+      if (!sessionUrl) {
+        throw new Error('No checkout session URL received');
+      }
 
       // Redirect to Stripe Checkout
       window.location.href = sessionUrl;
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Failed to process subscription');
+      toast.error(error instanceof Error ? error.message : 'Failed to process subscription');
     } finally {
       setIsLoading(false);
     }
