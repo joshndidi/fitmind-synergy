@@ -164,9 +164,9 @@ function App() {
         <SubscriptionProvider>
           <Router>
             <TooltipProvider>
-              <div className="min-h-screen bg-background">
+              <div className="min-h-screen bg-gradient-dark">
                 <NavBar />
-                <main className="container mx-auto py-8">
+                <main className="pt-16">
                   <AppRoutes />
                 </main>
                 <Toaster />

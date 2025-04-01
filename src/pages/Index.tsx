@@ -22,7 +22,7 @@ const Index = () => {
   }, [user, navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-dark flex flex-col justify-center items-center px-4 py-12">
+    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12">
       <div className={`w-full max-w-4xl mx-auto transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`}>
         <div className="grid md:grid-cols-2 gap-8 items-center">
           {/* Left side - App info */}
