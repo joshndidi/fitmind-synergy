@@ -1,14 +1,26 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Save, Music, VolumeX, Volume2, SkipForward, SkipBack, Clock } from 'lucide-react';
+import { Play, Pause, Save, Music, VolumeX, Volume2, SkipForward, SkipBack, Clock, Edit, Trash, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Slider } from "@/components/ui/slider";
 import QuietTimeSphere from '../components/QuietTimeSphere';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationLink } from "@/components/ui/pagination";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+// Define the note type
+type Note = {
+  id: string;
+  title: string | null;
+  content: string;
+  created_at: string;
+  user_id: string;
+};
 
 // Define the music tracks
 const MUSIC_TRACKS = [
@@ -51,10 +63,10 @@ const MUSIC_TRACKS = [
 ];
 
 const QuietTime = () => {
+  // Audio state
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentColor, setCurrentColor] = useState("#4CAF50"); // Green default
   const [isMuted, setIsMuted] = useState(false);
-  const [note, setNote] = useState('');
   const [volume, setVolume] = useState(80);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [loopEnabled, setLoopEnabled] = useState(true);
@@ -62,6 +74,20 @@ const QuietTime = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Notes state
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [currentNote, setCurrentNote] = useState<Note | null>(null);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const NOTES_PER_PAGE = 5;
+
+  // Auth
+  const { user } = useAuth();
 
   // Filter tracks by category
   const filteredTracks = selectedCategory === "all" 
@@ -120,6 +146,162 @@ const QuietTime = () => {
     }
   }, [currentTrackIndex, filteredTracks]);
 
+  // Load notes on component mount and when user changes
+  useEffect(() => {
+    if (user) {
+      fetchNotes();
+    }
+  }, [user, page]);
+
+  // Fetch user's notes from the database
+  const fetchNotes = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      // Count total notes for pagination
+      const { count } = await supabase
+        .from('quiet_time_notes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      const totalCount = count || 0;
+      setTotalPages(Math.ceil(totalCount / NOTES_PER_PAGE));
+
+      // Fetch paginated notes
+      const { data, error } = await supabase
+        .from('quiet_time_notes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .range((page - 1) * NOTES_PER_PAGE, page * NOTES_PER_PAGE - 1);
+
+      if (error) throw error;
+      
+      setNotes(data || []);
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+      toast.error('Failed to load your notes');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Save a new note or update an existing one
+  const saveNote = async () => {
+    if (!user) {
+      toast.error('You must be logged in to save notes');
+      return;
+    }
+
+    if (!noteContent.trim()) {
+      toast.error('Please enter some content for your note');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (isEditing && currentNote) {
+        // Update existing note
+        const { error } = await supabase
+          .from('quiet_time_notes')
+          .update({
+            title: noteTitle || 'Untitled Note',
+            content: noteContent
+          })
+          .eq('id', currentNote.id);
+
+        if (error) throw error;
+        toast.success('Note updated successfully');
+      } else {
+        // Insert new note
+        const { error } = await supabase
+          .from('quiet_time_notes')
+          .insert({
+            user_id: user.id,
+            title: noteTitle || 'Untitled Note',
+            content: noteContent
+          });
+
+        if (error) throw error;
+        toast.success('Note saved successfully');
+      }
+
+      // Reset form and refresh notes
+      resetNoteForm();
+      fetchNotes();
+    } catch (error) {
+      console.error('Error saving note:', error);
+      toast.error('Failed to save your note');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Delete a note
+  const deleteNote = async (noteId: string) => {
+    if (!user) return;
+
+    if (confirm('Are you sure you want to delete this note?')) {
+      setIsLoading(true);
+      try {
+        const { error } = await supabase
+          .from('quiet_time_notes')
+          .delete()
+          .eq('id', noteId);
+
+        if (error) throw error;
+        
+        toast.success('Note deleted successfully');
+        fetchNotes();
+        
+        // If the deleted note was being edited, clear the form
+        if (currentNote?.id === noteId) {
+          resetNoteForm();
+        }
+      } catch (error) {
+        console.error('Error deleting note:', error);
+        toast.error('Failed to delete note');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  // Load a note for editing
+  const editNote = (note: Note) => {
+    setCurrentNote(note);
+    setNoteTitle(note.title || '');
+    setNoteContent(note.content);
+    setIsEditing(true);
+  };
+
+  // Reset the note form
+  const resetNoteForm = () => {
+    setCurrentNote(null);
+    setNoteTitle('');
+    setNoteContent('');
+    setIsEditing(false);
+  };
+
+  // Create a new note
+  const createNewNote = () => {
+    resetNoteForm();
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
+
+  // Format time for session display
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Audio control functions
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
     
@@ -159,23 +341,6 @@ const QuietTime = () => {
     const prevIndex = (currentTrackIndex - 1 + filteredTracks.length) % filteredTracks.length;
     setCurrentTrackIndex(prevIndex);
     toast.info(`Playing: ${filteredTracks[prevIndex]?.name}`);
-  };
-
-  const saveNote = () => {
-    if (note.trim()) {
-      // In a real implementation, this would save the note to a database
-      // with encryption for privacy
-      toast.success("Note saved securely");
-      setNote('');
-    } else {
-      toast.error("Please enter a note before saving");
-    }
-  };
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleCategoryChange = (newCategory: string) => {
@@ -341,46 +506,188 @@ const QuietTime = () => {
         
         {/* Private notes section */}
         <div>
-          <Card className="glass-card h-full">
+          <Card className="glass-card h-full mb-6">
             <CardHeader>
               <CardTitle className="text-text-light flex items-center gap-2">
                 <Music className="h-5 w-5" /> Private Notes
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-text-muted text-sm">
-                Your thoughts are private. All notes are encrypted and only accessible to you.
-              </p>
+              <div className="flex justify-between items-center mb-4">
+                <p className="text-text-muted text-sm">
+                  {isEditing 
+                    ? "Editing note..." 
+                    : "Your thoughts are private. All notes are encrypted and only accessible to you."}
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={createNewNote}
+                  disabled={!user}
+                  className="h-8"
+                >
+                  <Plus className="h-4 w-4 mr-1" /> New
+                </Button>
+              </div>
               
-              <textarea
-                className="w-full h-64 bg-black/30 border border-white/10 rounded-md p-3 text-text-light"
-                placeholder="Write your private thoughts here..."
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
+              <div className="space-y-3">
+                <div>
+                  <p className="text-text-muted text-sm mb-1">Title</p>
+                  <input
+                    type="text"
+                    className="w-full bg-black/30 border border-white/10 rounded-md p-2 text-text-light text-sm"
+                    placeholder="Note title (optional)"
+                    value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)}
+                    disabled={!user}
+                  />
+                </div>
+                
+                <div>
+                  <p className="text-text-muted text-sm mb-1">Content</p>
+                  <Textarea
+                    className="w-full h-36 bg-black/30 border border-white/10 rounded-md p-3 text-text-light"
+                    placeholder={user ? "Write your private thoughts here..." : "Sign in to save notes"}
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                    disabled={!user}
+                  />
+                </div>
+              </div>
               
-              <Button 
-                className="w-full bg-primary text-white"
-                onClick={saveNote}
-              >
-                <Save className="mr-2 h-4 w-4" /> Save Note
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  className="flex-1 bg-primary text-white"
+                  onClick={saveNote}
+                  disabled={!user || isLoading || !noteContent.trim()}
+                >
+                  <Save className="mr-2 h-4 w-4" /> {isEditing ? "Update" : "Save"}
+                </Button>
+                
+                {isEditing && (
+                  <Button 
+                    variant="outline" 
+                    onClick={resetNoteForm}
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
               
-              <div className="pt-4 border-t border-white/10">
-                <h3 className="font-medium text-text-light mb-2">Session Stats</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-text-muted">Current Session</span>
-                    <span className="text-text-light">{formatTime(sessionTime)}</span>
+              {user && notes.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="font-medium text-text-light mb-3">Your Notes</h3>
+                  <div className="max-h-[300px] overflow-y-auto pr-2">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {notes.map((note) => (
+                          <TableRow key={note.id}>
+                            <TableCell className="font-medium">
+                              {note.title || "Untitled Note"}
+                            </TableCell>
+                            <TableCell className="text-text-muted text-xs">
+                              {formatDate(note.created_at)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => editNote(note)}
+                                  className="h-8 w-8"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => deleteNote(note.id)}
+                                  className="h-8 w-8 text-red-500 hover:text-red-600"
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-text-muted">Total This Week</span>
-                    <span className="text-text-light">2h 35m</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-text-muted">Longest Session</span>
-                    <span className="text-text-light">45m 12s</span>
-                  </div>
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <Pagination className="mt-4">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                          <PaginationItem key={p}>
+                            <PaginationLink 
+                              isActive={page === p}
+                              onClick={() => setPage(p)}
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        
+                        <PaginationItem>
+                          <PaginationNext 
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  )}
+                </div>
+              )}
+              
+              {user && notes.length === 0 && !isLoading && (
+                <div className="py-6 text-center text-text-muted">
+                  <p>You don't have any notes yet.</p>
+                  <p className="text-sm mt-1">Create your first note now!</p>
+                </div>
+              )}
+              
+              {!user && (
+                <div className="py-6 text-center text-text-muted">
+                  <p>Sign in to save and view your notes.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="text-text-light text-lg">Session Stats</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Current Session</span>
+                  <span className="text-text-light">{formatTime(sessionTime)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Total This Week</span>
+                  <span className="text-text-light">2h 35m</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Longest Session</span>
+                  <span className="text-text-light">45m 12s</span>
                 </div>
               </div>
             </CardContent>
