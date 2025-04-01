@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, TrendingUp, Calendar, Dumbbell, Award, ChevronRight } from "lucide-react";
@@ -19,18 +18,18 @@ const Dashboard = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Calculate stats
-  const totalWorkouts = workouts.length;
-  const totalDuration = workouts.reduce((sum, workout) => sum + workout.duration, 0);
-  const totalCalories = workouts.reduce((sum, workout) => sum + workout.calories, 0);
+  // Calculate stats with null checks
+  const totalWorkouts = workouts?.length || 0;
+  const totalDuration = workouts?.reduce((sum, workout) => sum + (workout.duration || 0), 0) || 0;
+  const totalCalories = workouts?.reduce((sum, workout) => sum + (workout.calories || 0), 0) || 0;
   
-  // Get recent workouts
-  const recentWorkouts = [...workouts].sort((a, b) => {
+  // Get recent workouts with null check
+  const recentWorkouts = workouts ? [...workouts].sort((a, b) => {
     const dateOrder = { "Today": 0, "Yesterday": 1 };
     const aValue = dateOrder[a.date as keyof typeof dateOrder] ?? 2;
     const bValue = dateOrder[b.date as keyof typeof dateOrder] ?? 2;
     return aValue - bValue;
-  }).slice(0, 3);
+  }).slice(0, 3) : [];
 
   const handleWorkoutClick = (workout: Workout) => {
     if (workout && workout.id) {
@@ -40,15 +39,23 @@ const Dashboard = () => {
     }
   };
 
-  // Handle Start Workout button click
+  // Handle Start Workout button click with null check
   const handleStartWorkout = () => {
-    if (workouts.length > 0 && workouts[0].id) {
+    if (workouts?.length > 0 && workouts[0].id) {
       navigate(`/workout-display/${workouts[0].id}`);
     } else {
       toast.error("No workouts available. Create one in Workout AI.");
       navigate("/workout-ai");
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className={`page-container transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}>
@@ -121,7 +128,7 @@ const Dashboard = () => {
           </button>
         </div>
         
-        {workouts.length > 0 ? (
+        {workouts?.length > 0 ? (
           <div className="glass-card p-5">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
@@ -132,11 +139,11 @@ const Dashboard = () => {
                   </h3>
                 </div>
                 <p className="text-text-muted mb-4">
-                  {workouts[0].exercises.length} exercises · {workouts[0].duration} minutes · {workouts[0].intensity} intensity
+                  {workouts[0].exercises?.length || 0} exercises · {workouts[0].duration || 0} minutes · {workouts[0].intensity || 'Medium'} intensity
                 </p>
                 
                 <div className="flex flex-wrap gap-2">
-                  {workouts[0].exercises.slice(0, 4).map((exercise, index) => (
+                  {workouts[0].exercises?.slice(0, 4).map((exercise, index) => (
                     <span key={index} className="px-3 py-1 text-xs rounded-full bg-white/10 text-text-light">
                       {exercise.name}
                     </span>
@@ -166,7 +173,7 @@ const Dashboard = () => {
       </div>
 
       {/* Recent Workouts */}
-      <div className="mb-8 animate-slide-in" style={{ animationDelay: "0.2s" }}>
+      <div className="animate-slide-in" style={{ animationDelay: "0.2s" }}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-text-light">Recent Workouts</h2>
           <button 
@@ -178,11 +185,7 @@ const Dashboard = () => {
           </button>
         </div>
         
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        ) : recentWorkouts.length > 0 ? (
+        {recentWorkouts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recentWorkouts.map((workout) => (
               <WorkoutCard
