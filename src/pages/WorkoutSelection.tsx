@@ -1,34 +1,54 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWorkout } from "@/hooks/useWorkout";
 import { useSubscription } from "@/context/SubscriptionContext";
-import { Dumbbell, Plus, Brain, Calendar } from "lucide-react";
+import { Dumbbell, Plus, Brain, Calendar, Edit2, Trash2, MoreVertical } from "lucide-react";
 import WorkoutCard from "@/components/WorkoutCard";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { WorkoutPlan } from "@/types/workout";
 
 const WorkoutSelection = () => {
   const navigate = useNavigate();
-  const { workouts, loading } = useWorkout();
+  const { workoutPlans, loading, deleteWorkoutPlan } = useWorkout();
   const { isActive } = useSubscription();
-  const [userWorkouts, setUserWorkouts] = useState<any[]>([]);
-  const [aiWorkouts, setAiWorkouts] = useState<any[]>([]);
+  const [userWorkouts, setUserWorkouts] = useState<WorkoutPlan[]>([]);
+  const [aiWorkouts, setAiWorkouts] = useState<WorkoutPlan[]>([]);
 
   useEffect(() => {
     // Separate AI-generated workouts from user-created ones
-    if (workouts.length > 0) {
-      const ai = workouts.filter(w => w.id.startsWith('ai-'));
-      const user = workouts.filter(w => !w.id.startsWith('ai-'));
+    if (workoutPlans.length > 0) {
+      const ai = workoutPlans.filter(w => w.isAiGenerated);
+      const user = workoutPlans.filter(w => !w.isAiGenerated);
       setAiWorkouts(ai);
       setUserWorkouts(user);
     }
-  }, [workouts]);
+  }, [workoutPlans]);
 
   const handleCreatePlan = () => {
-    navigate("/workout-ai");
+    navigate("/workout/create");
+  };
+
+  const handleEditPlan = (id: string) => {
+    navigate(`/workout/edit/${id}`);
+  };
+
+  const handleDeletePlan = async (id: string) => {
+    try {
+      await deleteWorkoutPlan(id);
+      toast.success('Workout deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete workout');
+      console.error('Error deleting workout:', error);
+    }
   };
 
   const handleSelectWorkout = (id: string) => {
@@ -127,7 +147,7 @@ const WorkoutSelection = () => {
                   type={workout.type}
                   duration={workout.duration}
                   calories={workout.calories}
-                  date={workout.date}
+                  date={workout.createdAt}
                   intensity={workout.intensity}
                   onClick={() => handleSelectWorkout(workout.id)}
                 />
@@ -152,7 +172,7 @@ const WorkoutSelection = () => {
             Your Custom Workouts
           </h2>
           <Button
-            onClick={() => navigate("/dashboard", { state: { openDialog: "addPlan" } })}
+            onClick={handleCreatePlan}
             variant="outline"
             className="flex items-center gap-2"
           >
@@ -169,7 +189,7 @@ const WorkoutSelection = () => {
               <p className="text-text-muted mb-4">
                 Create your own custom workout plan to track your progress.
               </p>
-              <Button onClick={() => navigate("/dashboard", { state: { openDialog: "addPlan" } })}>
+              <Button onClick={handleCreatePlan}>
                 Create Custom Plan
               </Button>
             </CardContent>
@@ -177,13 +197,13 @@ const WorkoutSelection = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {userWorkouts.map((workout) => (
-              <div key={workout.id} className="relative">
+              <div key={workout.id} className="relative group">
                 <WorkoutCard
                   title={workout.title}
                   type={workout.type}
                   duration={workout.duration}
                   calories={workout.calories}
-                  date={workout.date}
+                  date={workout.createdAt}
                   intensity={workout.intensity}
                   onClick={() => handleSelectWorkout(workout.id)}
                 />
@@ -193,6 +213,28 @@ const WorkoutSelection = () => {
                     <span>{getCompletionPercentage(workout.id)}%</span>
                   </div>
                   <Progress value={getCompletionPercentage(workout.id)} className="h-1.5" />
+                </div>
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEditPlan(workout.id)}>
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => handleDeletePlan(workout.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             ))}

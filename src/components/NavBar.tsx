@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useWorkout } from "../hooks/useWorkout";
@@ -14,9 +13,18 @@ import {
   Award, 
   Menu, 
   X,
-  Shield
+  Shield,
+  Trophy,
+  Medal,
+  Settings,
+  Flame,
+  LayoutTemplate,
+  BarChart
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 
 const NavBar = () => {
   const location = useLocation();
@@ -45,14 +53,16 @@ const NavBar = () => {
 
   const navLinks = [
     { name: "Dashboard", path: "/dashboard", icon: <Home size={20} /> },
-    { name: "Workout AI", path: "/workout-ai", icon: <Brain size={20} /> },
-    { name: "Calorie Tracker", path: "/calorie-tracker", icon: <Activity size={20} /> },
-    { name: "Profile", path: "/profile", icon: <User size={20} /> },
     { name: "Workouts", path: "/workouts", icon: <Dumbbell size={20} /> },
-    { name: "Subscription", path: "/subscription", icon: <CreditCard size={20} /> },
-    { name: "Quiet Time", path: "/quiet-time", icon: <Music size={20} /> },
+    { name: "Templates", path: "/templates", icon: <LayoutTemplate size={20} /> },
+    { name: "Workout AI", path: "/workout-ai", icon: <Brain size={20} /> },
+    { name: "Calories", path: "/calories", icon: <Flame size={20} /> },
     { name: "Social", path: "/social", icon: <Users size={20} /> },
-    { name: "Leaderboard", path: "/leaderboard", icon: <Award size={20} /> },
+    { name: "Achievements", path: "/achievements", icon: <Medal size={20} /> },
+    { name: "Leaderboard", path: "/leaderboard", icon: <Trophy size={20} /> },
+    { name: "Stats", path: "/stats", icon: <BarChart size={20} /> },
+    { name: "Profile", path: "/profile", icon: <User size={20} /> },
+    { name: "Settings", path: "/settings", icon: <Settings size={20} /> },
   ];
 
   return (
@@ -76,17 +86,21 @@ const NavBar = () => {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`nav-link ${
-                  location.pathname === link.path ? "active" : ""
-                }`}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                  location.pathname === link.path
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-muted'
+                )}
               >
                 {link.icon}
                 <span>{link.name}</span>
               </Link>
             ))}
-            <button onClick={handleLogout} className="btn-secondary">
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
               Logout
-            </button>
+            </Button>
           </div>
 
           {/* Mobile Navigation Toggle */}
@@ -106,18 +120,21 @@ const NavBar = () => {
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`nav-link ${
-                    location.pathname === link.path ? "active" : ""
-                  }`}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                    location.pathname === link.path
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  )}
                   onClick={() => setIsOpen(false)}
                 >
                   {link.icon}
                   <span>{link.name}</span>
                 </Link>
               ))}
-              <button onClick={handleLogout} className="btn-secondary mt-4">
-                Logout
-              </button>
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="mt-4">
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         )}

@@ -1,243 +1,240 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { Food } from '@/types/workout';
+import { Flame, Plus, Utensils, Scale, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
 
-import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Camera, BarChart3, CheckCircle2, Save } from "lucide-react";
-import { toast } from "sonner";
-import { useAuth } from "../context/AuthContext";
-import { useAI } from "../hooks/useAI";
-import { Food } from "../types/workout";
+export default function CalorieTracker() {
+  const [meals, setMeals] = useState<Food[]>([]);
+  const [newMeal, setNewMeal] = useState<Partial<Food>>({
+    description: '',
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    date: format(new Date(), 'yyyy-MM-dd')
+  });
 
-const CalorieTracker = () => {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<Food | null>(null);
-  const [saved, setSaved] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
-  const { analyzeFood, loading, error } = useAI();
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          setSelectedImage(e.target.result as string);
-          setAnalysis(null);
-          setSaved(false);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const takePicture = () => {
-    // In a real implementation, this would access the device camera
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const analyzeImage = async () => {
-    if (!selectedImage || !imageFile) {
-      toast.error("Please select or take a picture of your meal first");
+  const handleAddMeal = () => {
+    if (!newMeal.description || !newMeal.calories) {
+      toast.error('Please fill in the required fields');
       return;
     }
 
-    setAnalyzing(true);
-    
-    try {
-      const result = await analyzeFood(imageFile);
-      
-      // Create a Food object with the analysis results
-      const foodItem: Food = {
-        id: crypto.randomUUID(),
-        description: result.description,
-        calories: result.calories,
-        protein: result.protein,
-        carbs: result.carbs,
-        fat: result.fat,
-        date: new Date().toISOString(),
-        imageUrl: selectedImage,
-        suggestedAlternatives: result.suggestedAlternatives
-      };
-      
-      setAnalysis(foodItem);
-      toast.success("Food analyzed successfully!");
-    } catch (err) {
-      console.error("Error analyzing food:", err);
-      toast.error("Failed to analyze food. Please try again.");
-    } finally {
-      setAnalyzing(false);
-    }
+    const meal: Food = {
+      id: `meal-${Date.now()}`,
+      description: newMeal.description,
+      calories: newMeal.calories || 0,
+      protein: newMeal.protein || 0,
+      carbs: newMeal.carbs || 0,
+      fat: newMeal.fat || 0,
+      date: newMeal.date || format(new Date(), 'yyyy-MM-dd')
+    };
+
+    setMeals(prev => [...prev, meal]);
+    setNewMeal({
+      description: '',
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      date: format(new Date(), 'yyyy-MM-dd')
+    });
+    toast.success('Meal added successfully');
   };
 
-  const saveFoodItem = () => {
-    if (!analysis) return;
-    
-    // Get existing food items from localStorage
-    const storedFood = localStorage.getItem('foodItems');
-    const foodItems: Food[] = storedFood ? JSON.parse(storedFood) : [];
-    
-    // Add the new food item
-    foodItems.push(analysis);
-    
-    // Save back to localStorage
-    localStorage.setItem('foodItems', JSON.stringify(foodItems));
-    
-    setSaved(true);
-    toast.success("Food item saved to your journal!");
+  const handleDeleteMeal = (id: string) => {
+    setMeals(prev => prev.filter(meal => meal.id !== id));
+    toast.success('Meal deleted');
   };
+
+  const totalCalories = meals.reduce((sum, meal) => sum + meal.calories, 0);
+  const totalProtein = meals.reduce((sum, meal) => sum + meal.protein, 0);
+  const totalCarbs = meals.reduce((sum, meal) => sum + meal.carbs, 0);
+  const totalFat = meals.reduce((sum, meal) => sum + meal.fat, 0);
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <h1 className="text-3xl font-bold mb-8 text-text-light">Calorie Tracker</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-text-light">Upload Food Image</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center space-y-4">
-              {selectedImage ? (
-                <div className="w-full max-h-64 overflow-hidden rounded-lg">
-                  <img 
-                    src={selectedImage} 
-                    alt="Selected food" 
-                    className="w-full h-full object-cover"
-                  />
+    <div className="container mx-auto py-6 animate-fade-in">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-4xl font-bold flex items-center gap-2">
+          <Utensils className="h-8 w-8" />
+          Calorie Tracker
+        </h1>
+      </div>
+
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-12">
+        <div className="md:col-span-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Add Meal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Input
+                      placeholder="What did you eat?"
+                      value={newMeal.description}
+                      onChange={(e) => setNewMeal(prev => ({ ...prev, description: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Calories</Label>
+                    <Input
+                      type="number"
+                      placeholder="Calories"
+                      value={newMeal.calories || ''}
+                      onChange={(e) => setNewMeal(prev => ({ ...prev, calories: parseInt(e.target.value) || 0 }))}
+                    />
+                  </div>
                 </div>
-              ) : (
-                <div className="w-full h-40 bg-black/20 rounded-lg flex items-center justify-center">
-                  <p className="text-text-muted">No image selected</p>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Protein (g)</Label>
+                    <Input
+                      type="number"
+                      placeholder="Protein"
+                      value={newMeal.protein || ''}
+                      onChange={(e) => setNewMeal(prev => ({ ...prev, protein: parseInt(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Carbs (g)</Label>
+                    <Input
+                      type="number"
+                      placeholder="Carbs"
+                      value={newMeal.carbs || ''}
+                      onChange={(e) => setNewMeal(prev => ({ ...prev, carbs: parseInt(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Fat (g)</Label>
+                    <Input
+                      type="number"
+                      placeholder="Fat"
+                      value={newMeal.fat || ''}
+                      onChange={(e) => setNewMeal(prev => ({ ...prev, fat: parseInt(e.target.value) || 0 }))}
+                    />
+                  </div>
+                </div>
+
+                <Button onClick={handleAddMeal} className="w-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Meal
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="mt-6">
+            <h2 className="text-xl font-semibold mb-4">Today's Meals</h2>
+            <div className="space-y-4">
+              {meals.map((meal) => (
+                <Card key={meal.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium">{meal.description}</h3>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {meal.calories} calories · {meal.protein}g protein · {meal.carbs}g carbs · {meal.fat}g fat
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteMeal(meal.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {meals.length === 0 && (
+                <div className="text-center text-muted-foreground py-8">
+                  No meals added yet. Start tracking your nutrition!
                 </div>
               )}
-              
-              <div className="flex flex-col sm:flex-row gap-4 w-full">
-                <label className="flex-1">
-                  <Button className="w-full bg-primary text-white" variant="outline">
-                    <Upload className="mr-2 h-4 w-4" /> Upload Image
-                  </Button>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageSelect}
-                    ref={fileInputRef}
-                  />
-                </label>
-                
-                <Button
-                  onClick={takePicture}
-                  className="flex-1 bg-primary/10 text-primary hover:bg-primary/20"
-                  variant="outline"
-                >
-                  <Camera className="mr-2 h-4 w-4" /> Take Picture
-                </Button>
-              </div>
-              
-              <Button
-                onClick={analyzeImage}
-                className="w-full bg-primary text-white"
-                disabled={!selectedImage || analyzing}
-              >
-                {analyzing ? (
-                  <>
-                    <span className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-white rounded-full"></span>
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <BarChart3 className="mr-2 h-4 w-4" /> Analyze Food
-                  </>
-                )}
-              </Button>
             </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-text-light">Nutritional Analysis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {analysis ? (
-              <div className="space-y-6">
-                <p className="text-text-light font-medium break-words line-clamp-2 hover:line-clamp-none">
-                  {analysis.description}
-                </p>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="glass-card p-4">
-                    <p className="text-text-muted text-sm">Calories</p>
-                    <p className="text-text-light text-xl font-bold truncate">{analysis.calories} kcal</p>
+          </div>
+        </div>
+
+        <div className="md:col-span-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Flame className="h-4 w-4 text-primary" />
+                    <span>Calories</span>
                   </div>
-                  
-                  <div className="glass-card p-4">
-                    <p className="text-text-muted text-sm">Protein</p>
-                    <p className="text-text-light text-xl font-bold truncate">{analysis.protein}g</p>
-                  </div>
-                  
-                  <div className="glass-card p-4">
-                    <p className="text-text-muted text-sm">Carbs</p>
-                    <p className="text-text-light text-xl font-bold truncate">{analysis.carbs}g</p>
-                  </div>
-                  
-                  <div className="glass-card p-4">
-                    <p className="text-text-muted text-sm">Fat</p>
-                    <p className="text-text-light text-xl font-bold truncate">{analysis.fat}g</p>
-                  </div>
+                  <span className="font-medium">{totalCalories}</span>
                 </div>
-                
-                {analysis.suggestedAlternatives && analysis.suggestedAlternatives.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-text-light font-medium mb-2">Healthier Alternatives:</p>
-                    <ul className="space-y-1 text-sm text-text-muted">
-                      {analysis.suggestedAlternatives.map((alt, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <span className="text-primary mt-0.5">•</span>
-                          <span className="break-words">{alt}</span>
-                        </li>
-                      ))}
-                    </ul>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-primary" />
+                    <span>Protein</span>
                   </div>
-                )}
-                
-                <Button 
-                  className="w-full bg-primary text-white"
-                  onClick={saveFoodItem}
-                  disabled={saved}
-                >
-                  {saved ? (
-                    <>
-                      <CheckCircle2 className="mr-2 h-4 w-4" /> Saved to Journal
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" /> Save to Food Journal
-                    </>
-                  )}
-                </Button>
+                  <span className="font-medium">{totalProtein}g</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-primary" />
+                    <span>Carbs</span>
+                  </div>
+                  <span className="font-medium">{totalCarbs}g</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-primary" />
+                    <span>Fat</span>
+                  </div>
+                  <span className="font-medium">{totalFat}g</span>
+                </div>
               </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                <BarChart3 className="h-16 w-16 text-text-muted opacity-20 mb-4" />
-                <h3 className="text-text-light text-lg font-medium mb-2">No Analysis Yet</h3>
-                <p className="text-text-muted">
-                  Upload an image of your food and click "Analyze Food" to get nutritional information
-                </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Nutrition Goals</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label>Daily Calorie Goal</Label>
+                  <Input type="number" placeholder="e.g., 2000" />
+                </div>
+                <div>
+                  <Label>Macronutrient Split</Label>
+                  <Select defaultValue="balanced">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="balanced">Balanced (40/30/30)</SelectItem>
+                      <SelectItem value="lowcarb">Low Carb (50/30/20)</SelectItem>
+                      <SelectItem value="highprotein">High Protein (40/40/20)</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button className="w-full">Save Goals</Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
-};
-
-export default CalorieTracker;
+}

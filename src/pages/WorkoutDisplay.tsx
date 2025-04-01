@@ -1,27 +1,45 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Clock, BarChart3, Dumbbell, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Clock, BarChart3, Dumbbell, ArrowLeft, CheckCircle2, Flame, Timer, User, Activity, Calendar, Camera, Settings, Trophy, BarChart2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useWorkout } from "../hooks/useWorkout";
 import { toast } from "sonner";
-import { Workout, Exercise } from "../types/workout";
+import { WorkoutPlan, WorkoutExercise, Workout, Exercise } from "../types/workout";
 import WorkoutActions from "../components/WorkoutActions";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Avatar } from "@/components/ui/avatar";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+interface ProfileStats {
+  totalWorkouts: number;
+  totalWeight: number;
+  streak: number;
+  achievements: number;
+}
 
 const WorkoutDisplay = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getWorkoutById, completeWorkout, workouts } = useWorkout();
   
-  const [workout, setWorkout] = useState<Workout | null>(null);
+  const [workout, setWorkout] = useState<WorkoutPlan | null>(null);
   const [completed, setCompleted] = useState<boolean[]>([]);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [isWorkoutComplete, setIsWorkoutComplete] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+  const [isWorkoutInProgress, setIsWorkoutInProgress] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [isResting, setIsResting] = useState(false);
+  const [restTimer, setRestTimer] = useState(0);
+
   // Load workout and progress
   useEffect(() => {
-    const loadWorkout = () => {
+    const loadWorkout = async () => {
       setLoading(true);
       
       if (workouts.length === 0) {
@@ -32,11 +50,11 @@ const WorkoutDisplay = () => {
       }
       
       // Determine which workout to display
-      let targetWorkout: Workout | null = null;
+      let targetWorkout: WorkoutPlan | null = null;
       
       // Try to find the specific workout if ID is provided
       if (id) {
-        targetWorkout = getWorkoutById(id);
+        targetWorkout = await getWorkoutById(id);
       }
       
       // If no ID provided or workout not found, use the first one
@@ -84,6 +102,20 @@ const WorkoutDisplay = () => {
     }
   }, [completed, workout]);
 
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isWorkoutInProgress && !isResting) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev + 1);
+      }, 1000);
+    } else if (isResting && restTimer > 0) {
+      interval = setInterval(() => {
+        setRestTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isWorkoutInProgress, isResting, restTimer]);
+
   const handleExerciseComplete = (index: number) => {
     const newCompleted = [...completed];
     newCompleted[index] = !newCompleted[index];
@@ -99,7 +131,14 @@ const WorkoutDisplay = () => {
 
   const handleCompleteWorkout = () => {
     if (workout) {
-      completeWorkout(workout);
+      completeWorkout({
+        ...workout,
+        completedAt: new Date().toISOString(),
+        totalWeight: workout.exercises.reduce(
+          (sum: number, ex: WorkoutExercise) => sum + (ex.weight || 0),
+          0
+        ),
+      });
       toast.success("Workout completed! Great job!");
       
       // Clear progress after completing
@@ -107,6 +146,63 @@ const WorkoutDisplay = () => {
       localStorage.removeItem(progressKey);
       
       navigate("/dashboard");
+    }
+  };
+
+  const startWorkout = () => {
+    setIsWorkoutInProgress(true);
+    setTimer(0);
+  };
+
+  const startRest = () => {
+    setIsResting(true);
+    setRestTimer(workout?.exercises[currentExerciseIndex].restTime || 60);
+  };
+
+  const endRest = () => {
+    setIsResting(false);
+    if (workout && currentExerciseIndex < workout.exercises.length - 1) {
+      setCurrentExerciseIndex((prev) => prev + 1);
+    } else {
+      completeWorkoutSession();
+    }
+  };
+
+  const completeWorkoutSession = async () => {
+    if (!workout) return;
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const completedWorkout: Workout = {
+        id: workout.id,
+        title: workout.title,
+        description: workout.description || '',
+        type: workout.type,
+        duration: timer,
+        calories: workout.calories || 0,
+        intensity: workout.intensity === 'beginner' ? 'Low' : 
+                  workout.intensity === 'intermediate' ? 'Medium' : 'High',
+        exercises: workout.exercises.map(ex => ({
+          name: ex.name,
+          sets: ex.sets,
+          reps: ex.reps.toString(),
+          weight: ex.weight?.toString() || '0',
+          duration: ex.duration,
+          calories: 0 // We'll calculate this later
+        })),
+        date: today,
+        completedAt: new Date().toISOString(),
+        totalWeight: workout.exercises.reduce(
+          (sum, ex) => sum + (ex.weight || 0),
+          0
+        )
+      };
+
+      await completeWorkout(completedWorkout);
+      toast.success('Workout completed!');
+      navigate('/workouts');
+    } catch (error) {
+      toast.error('Failed to complete workout');
     }
   };
 
@@ -139,6 +235,9 @@ const WorkoutDisplay = () => {
       </div>
     );
   }
+
+  const currentExercise = workout.exercises[currentExerciseIndex];
+  const progress = ((currentExerciseIndex + 1) / workout.exercises.length) * 100;
 
   return (
     <div className="page-container pb-20">
@@ -208,7 +307,7 @@ const WorkoutDisplay = () => {
             <h2 className="text-xl font-bold text-text-light mb-6">Exercises</h2>
             
             <div className="space-y-6">
-              {workout.exercises.map((exercise: Exercise, index: number) => (
+              {workout.exercises.map((exercise: WorkoutExercise, index: number) => (
                 <div
                   key={index}
                   className={`border rounded-lg p-4 transition-colors ${
@@ -259,6 +358,88 @@ const WorkoutDisplay = () => {
           </div>
         </div>
       </div>
+
+      {!isWorkoutInProgress ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Workout Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">{workout.description}</p>
+            <div className="space-y-4">
+              {workout.exercises.map((exercise: WorkoutExercise) => (
+                <div
+                  key={exercise.id}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div>
+                    <h3 className="font-medium">{exercise.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {exercise.sets} sets × {exercise.reps} reps
+                      {exercise.weight && ` × ${exercise.weight}kg`}
+                    </p>
+                  </div>
+                  <Timer className="h-4 w-4 text-muted-foreground" />
+                </div>
+              ))}
+            </div>
+            <Button
+              className="w-full mt-6"
+              onClick={startWorkout}
+            >
+              Start Workout
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Current Exercise</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center space-y-6">
+              <h2 className="text-3xl font-bold">{currentExercise.name}</h2>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Sets</p>
+                  <p className="text-2xl font-bold">{currentExercise.sets}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Reps</p>
+                  <p className="text-2xl font-bold">{currentExercise.reps}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Weight</p>
+                  <p className="text-2xl font-bold">
+                    {currentExercise.weight || 'Bodyweight'}
+                  </p>
+                </div>
+              </div>
+
+              {isResting ? (
+                <div className="space-y-4">
+                  <h3 className="text-xl font-semibold">Rest Time</h3>
+                  <p className="text-4xl font-bold">
+                    {Math.floor(restTimer / 60)}:
+                    {(restTimer % 60).toString().padStart(2, '0')}
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={endRest}
+                    disabled={restTimer > 0}
+                  >
+                    Skip Rest
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={startRest}>
+                  Start Rest
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
