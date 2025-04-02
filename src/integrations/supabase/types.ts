@@ -9,33 +9,205 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      completed_workouts: {
+        Row: {
+          calories: number
+          completed_at: string
+          duration: number
+          exercises: Json
+          id: string
+          title: string
+          total_weight: number | null
+          user_id: string
+          workout_plan_id: string | null
+        }
+        Insert: {
+          calories: number
+          completed_at?: string
+          duration: number
+          exercises: Json
+          id?: string
+          title: string
+          total_weight?: number | null
+          user_id: string
+          workout_plan_id?: string | null
+        }
+        Update: {
+          calories?: number
+          completed_at?: string
+          duration?: number
+          exercises?: Json
+          id?: string
+          title?: string
+          total_weight?: number | null
+          user_id?: string
+          workout_plan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completed_workouts_workout_plan_id_fkey"
+            columns: ["workout_plan_id"]
+            isOneToOne: false
+            referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
+          country: string | null
           created_at: string
           display_name: string | null
+          fitness_goal: string | null
+          height: number | null
           id: string
+          province: string | null
           updated_at: string
+          weight: number | null
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
+          country?: string | null
           created_at?: string
           display_name?: string | null
+          fitness_goal?: string | null
+          height?: number | null
           id: string
+          province?: string | null
           updated_at?: string
+          weight?: number | null
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
+          country?: string | null
           created_at?: string
           display_name?: string | null
+          fitness_goal?: string | null
+          height?: number | null
           id?: string
+          province?: string | null
           updated_at?: string
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      quiet_time_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workout_logs: {
+        Row: {
+          calories: number | null
+          completed_at: string
+          exercises: Json
+          id: string
+          title: string
+          total_weight: number
+          user_id: string
+        }
+        Insert: {
+          calories?: number | null
+          completed_at?: string
+          exercises: Json
+          id?: string
+          title: string
+          total_weight: number
+          user_id: string
+        }
+        Update: {
+          calories?: number | null
+          completed_at?: string
+          exercises?: Json
+          id?: string
+          title?: string
+          total_weight?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workout_plans: {
+        Row: {
+          calories: number
+          completion_status: Json
+          created_at: string
+          description: string | null
+          duration: number
+          exercises: Json
+          id: string
+          intensity: string
+          is_ai_generated: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          calories: number
+          completion_status?: Json
+          created_at?: string
+          description?: string | null
+          duration: number
+          exercises: Json
+          id?: string
+          intensity: string
+          is_ai_generated?: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          calories?: number
+          completion_status?: Json
+          created_at?: string
+          description?: string | null
+          duration?: number
+          exercises?: Json
+          id?: string
+          intensity?: string
+          is_ai_generated?: boolean
+          title?: string
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }
     }
     Views: {
-      [_ in never]: never
+      leaderboard_data: {
+        Row: {
+          avatar_url: string | null
+          country: string | null
+          display_name: string | null
+          id: string | null
+          province: string | null
+          total_weight: number | null
+          workout_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
