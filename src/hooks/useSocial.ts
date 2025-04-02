@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Post, Comment, Like, UserProfile, Follow, SocialStats } from '@/types/social';
@@ -5,26 +6,73 @@ import { Post, Comment, Like, UserProfile, Follow, SocialStats } from '@/types/s
 export default function useSocial() {
   const queryClient = useQueryClient();
 
+  // Helper for casting database response types
+  const mapPost = (postData: any): Post => ({
+    id: postData.id,
+    user_id: postData.user_id,
+    content: postData.content,
+    media_url: postData.media_url,
+    likes_count: postData.likes_count,
+    comments_count: postData.comments_count,
+    created_at: postData.created_at,
+    updated_at: postData.updated_at
+  });
+
+  const mapProfile = (profileData: any): UserProfile => ({
+    id: profileData.id,
+    username: profileData.username || profileData.display_name,
+    full_name: profileData.full_name || profileData.display_name,
+    display_name: profileData.display_name,
+    avatar_url: profileData.avatar_url,
+    bio: profileData.bio,
+    followers_count: profileData.followers_count || 0,
+    following_count: profileData.following_count || 0,
+    created_at: profileData.created_at,
+    updated_at: profileData.updated_at
+  });
+
   // Queries
   const feed = useQuery({
     queryKey: ['social_feed'],
     queryFn: async () => {
       const { data: posts, error } = await supabase
         .from('posts')
-        .select(`
-          *,
-          user:user_profiles(*),
-          likes:likes(user_id),
-          comments:comments(*)
-        `)
+        .select(`*`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return posts as (Post & {
-        user: UserProfile;
-        likes: Like[];
-        comments: Comment[];
-      })[];
+      
+      // Get profiles and enrich the posts
+      const postIds = posts.map(post => post.id);
+      const userIds = posts.map(post => post.user_id);
+      
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', userIds);
+      
+      const { data: likes } = await supabase
+        .from('post_likes')
+        .select('*')
+        .in('post_id', postIds);
+      
+      const { data: comments } = await supabase
+        .from('comments')
+        .select('*')
+        .in('post_id', postIds);
+      
+      return posts.map(post => {
+        const user = profiles?.find(profile => profile.id === post.user_id);
+        const postLikes = likes?.filter(like => like.post_id === post.id) || [];
+        const postComments = comments?.filter(comment => comment.post_id === post.id) || [];
+        
+        return {
+          ...mapPost(post),
+          user: mapProfile(user || {}),
+          likes: postLikes,
+          comments: postComments
+        };
+      });
     }
   });
 
@@ -35,13 +83,13 @@ export default function useSocial() {
       if (!user) throw new Error('Not authenticated');
 
       const { data: profile, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
 
       if (error) throw error;
-      return profile as UserProfile;
+      return mapProfile(profile);
     }
   });
 
@@ -51,11 +99,11 @@ export default function useSocial() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data: stats, error } = await supabase
+      const { data, error } = await supabase
         .rpc('get_social_stats', { user_id: user.id });
 
       if (error) throw error;
-      return stats as SocialStats;
+      return data as SocialStats;
     }
   });
 
@@ -69,7 +117,7 @@ export default function useSocial() {
         .single();
 
       if (error) throw error;
-      return data as Post;
+      return mapPost(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social_feed'] });
@@ -98,10 +146,16 @@ export default function useSocial() {
       if (!user) throw new Error('Not authenticated');
 
       const { error } = await supabase
-        .from('likes')
+        .from('post_likes')
         .insert({ post_id: postId, user_id: user.id });
 
       if (error) throw error;
+      
+      // Update likes count in posts table
+      await supabase
+        .from('posts')
+        .update({ likes_count: supabase.rpc('increment', { inc: 1 }) })
+        .eq('id', postId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social_feed'] });
@@ -115,12 +169,18 @@ export default function useSocial() {
       if (!user) throw new Error('Not authenticated');
 
       const { error } = await supabase
-        .from('likes')
+        .from('post_likes')
         .delete()
         .eq('post_id', postId)
         .eq('user_id', user.id);
 
       if (error) throw error;
+      
+      // Update likes count in posts table
+      await supabase
+        .from('posts')
+        .update({ likes_count: supabase.rpc('decrement', { dec: 1 }) })
+        .eq('id', postId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social_feed'] });
@@ -137,6 +197,13 @@ export default function useSocial() {
         .single();
 
       if (error) throw error;
+      
+      // Update comments count in posts table
+      await supabase
+        .from('posts')
+        .update({ comments_count: supabase.rpc('increment', { inc: 1 }) })
+        .eq('id', comment.post_id);
+        
       return data as Comment;
     },
     onSuccess: () => {
@@ -146,13 +213,19 @@ export default function useSocial() {
   });
 
   const deleteComment = useMutation({
-    mutationFn: async (commentId: string) => {
+    mutationFn: async (commentData: { commentId: string, postId: string }) => {
       const { error } = await supabase
         .from('comments')
         .delete()
-        .eq('id', commentId);
+        .eq('id', commentData.commentId);
 
       if (error) throw error;
+      
+      // Update comments count in posts table
+      await supabase
+        .from('posts')
+        .update({ comments_count: supabase.rpc('decrement', { dec: 1 }) })
+        .eq('id', commentData.postId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social_feed'] });
@@ -202,14 +275,19 @@ export default function useSocial() {
       if (!user) throw new Error('Not authenticated');
 
       const { data, error } = await supabase
-        .from('user_profiles')
-        .update(profile)
+        .from('profiles')
+        .update({
+          display_name: profile.display_name || profile.username || profile.full_name,
+          avatar_url: profile.avatar_url,
+          bio: profile.bio,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', user.id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as UserProfile;
+      return mapProfile(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social_profile'] });
@@ -230,4 +308,4 @@ export default function useSocial() {
     unfollowUser,
     updateProfile
   };
-} 
+}

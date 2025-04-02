@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -11,25 +12,46 @@ export interface Database {
     Tables: {
       achievements: {
         Row: {
-          created_at: string
-          description: string | null
           id: string
-          image_url: string | null
-          name: string | null
+          user_id: string
+          type: string
+          tier: string
+          title: string
+          description: string
+          icon: string
+          progress: number
+          target: number
+          completed: boolean
+          completed_at?: string
+          created_at: string
         }
         Insert: {
-          created_at?: string
-          description?: string | null
           id?: string
-          image_url?: string | null
-          name?: string | null
+          user_id: string
+          type: string
+          tier: string
+          title: string
+          description: string
+          icon: string
+          progress: number
+          target: number
+          completed: boolean
+          completed_at?: string
+          created_at?: string
         }
         Update: {
-          created_at?: string
-          description?: string | null
           id?: string
-          image_url?: string | null
-          name?: string | null
+          user_id?: string
+          type?: string
+          tier?: string
+          title?: string
+          description?: string
+          icon?: string
+          progress?: number
+          target?: number
+          completed?: boolean
+          completed_at?: string
+          created_at?: string
         }
         Relationships: []
       }
@@ -106,40 +128,46 @@ export interface Database {
       }
       completed_workouts: {
         Row: {
-          calories: number | null
-          created_at: string
-          date: string | null
-          duration: number | null
           id: string
-          intensity: string | null
-          title: string | null
-          total_weight: number | null
-          type: string | null
-          user_id: string | null
+          user_id: string
+          title: string
+          description?: string
+          type: string
+          duration: number
+          calories: number
+          intensity: string
+          exercises: Json
+          total_weight: number
+          completed_at: string
+          created_at: string
         }
         Insert: {
-          calories?: number | null
-          created_at?: string
-          date?: string | null
-          duration?: number | null
           id?: string
-          intensity?: string | null
-          title?: string | null
-          total_weight?: number | null
-          type?: string | null
-          user_id?: string | null
+          user_id: string
+          title: string
+          description?: string
+          type: string
+          duration: number
+          calories?: number
+          intensity: string
+          exercises: Json
+          total_weight?: number
+          completed_at?: string
+          created_at?: string
         }
         Update: {
-          calories?: number | null
-          created_at?: string
-          date?: string | null
-          duration?: number | null
           id?: string
-          intensity?: string | null
-          title?: string | null
-          total_weight?: number | null
-          type?: string | null
-          user_id?: string | null
+          user_id?: string
+          title?: string
+          description?: string
+          type?: string
+          duration?: number
+          calories?: number
+          intensity?: string
+          exercises?: Json
+          total_weight?: number
+          completed_at?: string
+          created_at?: string
         }
         Relationships: [
           {
@@ -192,67 +220,242 @@ export interface Database {
       }
       exercises: {
         Row: {
-          created_at: string
           id: string
+          name: string
+          type: string
+          category: string
+          muscle_group: string
+          difficulty: string
+          equipment: string[]
           image_url: string | null
-          name: string | null
-          type: string | null
+          video_url: string | null
+          description: string | null
+          instructions: string[] | null
+          tips: string[] | null
+          variations: string[] | null
+          created_at: string
         }
         Insert: {
-          created_at?: string
           id?: string
+          name: string
+          type?: string
+          category?: string
+          muscle_group?: string
+          difficulty?: string
+          equipment?: string[]
           image_url?: string | null
-          name?: string | null
-          type?: string | null
+          video_url?: string | null
+          description?: string | null
+          instructions?: string[] | null
+          tips?: string[] | null
+          variations?: string[] | null
+          created_at?: string
         }
         Update: {
-          created_at?: string
           id?: string
+          name?: string
+          type?: string
+          category?: string
+          muscle_group?: string
+          difficulty?: string
+          equipment?: string[]
           image_url?: string | null
-          name?: string | null
-          type?: string | null
+          video_url?: string | null
+          description?: string | null
+          instructions?: string[] | null
+          tips?: string[] | null
+          variations?: string[] | null
+          created_at?: string
         }
         Relationships: []
       }
-      profiles: {
+      posts: {
         Row: {
-          avatar_url: string | null
-          country: string | null
-          created_at: string
-          display_name: string | null
-          email: string | null
           id: string
-          is_admin: boolean | null
-          province: string | null
-          updated_at: string | null
-          username: string | null
-          website: string | null
+          user_id: string
+          content: string
+          created_at: string
+          updated_at: string
+          likes_count: number
+          comments_count: number
+          media_url?: string
         }
         Insert: {
-          avatar_url?: string | null
-          country?: string | null
+          id?: string
+          user_id: string
+          content: string
           created_at?: string
-          display_name?: string | null
-          email?: string | null
-          id: string
-          is_admin?: boolean | null
-          province?: string | null
-          updated_at?: string | null
-          username?: string | null
-          website?: string | null
+          updated_at?: string
+          likes_count?: number
+          comments_count?: number
+          media_url?: string
         }
         Update: {
-          avatar_url?: string | null
-          country?: string | null
-          created_at?: string
-          display_name?: string | null
-          email?: string | null
           id?: string
-          is_admin?: boolean | null
+          user_id?: string
+          content?: string
+          created_at?: string
+          updated_at?: string
+          likes_count?: number
+          comments_count?: number
+          media_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      comments: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          content: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          content: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          content?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_post_id_fkey"
+            columns: ["post_id"]
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      post_likes: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_likes_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      follows: {
+        Row: {
+          id: string
+          follower_id: string
+          following_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          follower_id: string
+          following_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          follower_id?: string
+          following_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_following_id_fkey"
+            columns: ["following_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      profiles: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          display_name: string | null
+          avatar_url: string | null
+          bio: string | null
+          weight: number | null
+          height: number | null
+          fitness_goal: string | null
+          country: string | null
+          province: string | null
+        }
+        Insert: {
+          id: string
+          created_at?: string
+          updated_at?: string
+          display_name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          weight?: number | null
+          height?: number | null
+          fitness_goal?: string | null
+          country?: string | null
           province?: string | null
-          updated_at?: string | null
-          username?: string | null
-          website?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          display_name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          weight?: number | null
+          height?: number | null
+          fitness_goal?: string | null
+          country?: string | null
+          province?: string | null
         }
         Relationships: [
           {
@@ -355,39 +558,155 @@ export interface Database {
           }
         ]
       }
-      workout_plans: {
+      workout_exercises: {
         Row: {
-          created_at: string
-          duration: number | null
-          exercises: Json | null
           id: string
-          intensity: string | null
-          is_ai_generated: boolean | null
-          title: string | null
-          type: string | null
-          user_id: string | null
+          workout_plan_id: string
+          name: string
+          sets: number
+          reps: number
+          weight: number | null
+          duration: number | null
+          rest_time: number | null
+          notes: string | null
+          order_index: number | null
+          created_at: string
         }
         Insert: {
-          created_at?: string
-          duration?: number | null
-          exercises?: Json | null
           id?: string
-          intensity?: string | null
-          is_ai_generated?: boolean | null
-          title?: string | null
-          type?: string | null
-          user_id?: string | null
+          workout_plan_id: string
+          name: string
+          sets: number
+          reps: number
+          weight?: number | null
+          duration?: number | null
+          rest_time?: number | null
+          notes?: string | null
+          order_index?: number | null
+          created_at?: string
         }
         Update: {
-          created_at?: string
-          duration?: number | null
-          exercises?: Json | null
           id?: string
-          intensity?: string | null
-          is_ai_generated?: boolean | null
-          title?: string | null
-          type?: string | null
-          user_id?: string | null
+          workout_plan_id?: string
+          name?: string
+          sets?: number
+          reps?: number
+          weight?: number | null
+          duration?: number | null
+          rest_time?: number | null
+          notes?: string | null
+          order_index?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_exercises_workout_plan_id_fkey"
+            columns: ["workout_plan_id"]
+            referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      workout_logs: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          type: string
+          duration: number
+          exercises: Json
+          calories: number | null
+          total_weight: number
+          completed_at: string
+          created_at: string
+          workout_plan_id: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          type: string
+          duration: number
+          exercises: Json
+          calories?: number | null
+          total_weight?: number
+          completed_at?: string
+          created_at?: string
+          workout_plan_id?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          type?: string
+          duration?: number
+          exercises?: Json
+          calories?: number | null
+          total_weight?: number
+          completed_at?: string
+          created_at?: string
+          workout_plan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_logs_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_logs_workout_plan_id_fkey"
+            columns: ["workout_plan_id"]
+            referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      workout_plans: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          type: string
+          duration: number
+          calories: number | null
+          intensity: string
+          exercises: Json
+          created_at: string
+          updated_at: string | null
+          is_ai_generated: boolean
+          is_template: boolean | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          type: string
+          duration: number
+          calories?: number | null
+          intensity: string
+          exercises?: Json
+          created_at?: string
+          updated_at?: string | null
+          is_ai_generated?: boolean
+          is_template?: boolean | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          type?: string
+          duration?: number
+          calories?: number | null
+          intensity?: string
+          exercises?: Json
+          created_at?: string
+          updated_at?: string | null
+          is_ai_generated?: boolean
+          is_template?: boolean | null
         }
         Relationships: [
           {
@@ -460,6 +779,18 @@ export interface Database {
           }[]
         )
       }
+      get_social_stats: {
+        Args: {
+          user_id: string
+        }
+        Returns: {
+          posts_count: number
+          followers_count: number
+          following_count: number
+          total_likes: number
+          total_comments: number
+        }
+      }
     }
     Enums: {
       [_ in never]: never
@@ -470,65 +801,6 @@ export interface Database {
   }
 }
 
-export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (Database["public"]["Tables"] & { step: { Row: { started_at: string; ended_at: string; }; Insert: { started_at: string; ended_at: string; }; Update: { started_at: string; ended_at: string; }; }; })
-    | { schema: string; table: string },
-  TableName extends PublicTableNameOrOptions extends { schema: string; table: string }
-    ? PublicTableNameOrOptions["table"]
-    : Extract<keyof Database["public"]["Tables"], string>
-> = PublicTableNameOrOptions extends { schema: string; table: string }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] & { step: { Row: { started_at: string; ended_at: string; }; Insert: { started_at: string; ended_at: string; }; Update: { started_at: string; ended_at: string; }; }; })[TableName]["Row"]
-  : PublicTableNameOrOptions extends keyof (Database["public"]["Tables"] & { step: { Row: { started_at: string; ended_at: string; }; Insert: { started_at: string; ended_at: string; }; Update: { started_at: string; ended_at: string; }; }; })
-    ? (Database["public"]["Tables"] & { step: { Row: { started_at: string; ended_at: string; }; Insert: { started_at: string; ended_at: string; }; Update: { started_at: string; ended_at: string; }; }; })[TableName]["Row"]
-    : never
+export type LeaderboardEntry = Database['public']['Functions']['get_leaderboard_data']['Returns'][number];
+export type SocialStats = Database['public']['Functions']['get_social_stats']['Returns'];
 
-export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof Database["public"]["Tables"]
-    | { schema: string; table: string },
-  TableName extends PublicTableNameOrOptions extends { schema: string; table: string }
-    ? PublicTableNameOrOptions["table"]
-    : Extract<keyof Database["public"]["Tables"], string>
-> = PublicTableNameOrOptions extends { schema: string; table: string }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName]["Insert"]
-  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][TableName]["Insert"]
-    : never
-
-export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof Database["public"]["Tables"]
-    | { schema: string; table: string },
-  TableName extends PublicTableNameOrOptions extends { schema: string; table: string }
-    ? PublicTableNameOrOptions["table"]
-    : Extract<keyof Database["public"]["Tables"], string>
-> = PublicTableNameOrOptions extends { schema: string; table: string }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName]["Update"]
-  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][TableName]["Update"]
-    : never
-
-export type Enums<
-  PublicEnumNameOrOptions extends
-    | keyof Database["public"]["Enums"]
-    | { schema: string; name: string },
-  EnumName extends PublicEnumNameOrOptions extends { schema: string; name: string }
-    ? PublicEnumNameOrOptions["name"]
-    : Extract<keyof Database["public"]["Enums"], string>
-> = PublicEnumNameOrOptions extends { schema: string; name: string }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
-    ? Database["public"]["Enums"][EnumName]
-    : never
-
-// Add leaderboard data type
-export interface LeaderboardEntry {
-  id: string;
-  display_name: string;
-  avatar_url: string;
-  country: string | null;
-  province: string | null;
-  total_weight: number;
-  workout_count: number;
-}

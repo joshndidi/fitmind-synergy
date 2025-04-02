@@ -1,5 +1,6 @@
+
 export type WorkoutType = 'strength' | 'cardio' | 'flexibility' | 'hiit' | 'custom';
-export type WorkoutIntensity = 'Low' | 'Medium' | 'High';
+export type WorkoutIntensity = 'Low' | 'Medium' | 'High' | 'beginner' | 'intermediate' | 'advanced';
 
 export interface Exercise {
   name: string;
@@ -19,6 +20,7 @@ export interface WorkoutExercise {
   weight?: number;
   duration?: number;
   restTime?: number;
+  rest?: string; // Added for compatibility
   notes?: string;
   orderIndex: number;
   createdAt: string;
@@ -28,7 +30,7 @@ export interface Workout {
   id: string;
   title: string;
   description?: string;
-  type: WorkoutType;
+  type: WorkoutType | string;
   duration: number;
   calories?: number;
   intensity: WorkoutIntensity;
@@ -43,10 +45,10 @@ export interface WorkoutPlan {
   userId: string;
   title: string;
   description?: string;
-  type: WorkoutType;
+  type: WorkoutType | string;
   duration: number;
   calories?: number;
-  intensity: WorkoutIntensity;
+  intensity: WorkoutIntensity | string;
   createdAt: string;
   updatedAt?: string;
   isAiGenerated: boolean;
@@ -92,13 +94,13 @@ export interface WorkoutLog {
 export interface CreateWorkoutPlanInput {
   title: string;
   description?: string;
-  type: WorkoutType;
+  type: WorkoutType | string;
   duration: number;
   calories?: number;
-  intensity: WorkoutIntensity;
+  intensity: WorkoutIntensity | string;
   isAiGenerated?: boolean;
   isTemplate?: boolean;
-  exercises: Omit<WorkoutExercise, 'id' | 'createdAt'>[];
+  exercises: Omit<WorkoutExercise, "id" | "createdAt">[];
 }
 
 export interface CreateWorkoutLogInput {
@@ -107,17 +109,17 @@ export interface CreateWorkoutLogInput {
   duration: number;
   caloriesBurned?: number;
   notes?: string;
-  exercises: Omit<WorkoutLogExercise, 'id' | 'createdAt'>[];
+  exercises: Omit<WorkoutLogExercise, "id" | "createdAt">[];
 }
 
 export interface UpdateWorkoutPlanInput {
   title?: string;
   description?: string;
-  type?: WorkoutType;
+  type?: WorkoutType | string;
   duration?: number;
   calories?: number;
-  intensity?: WorkoutIntensity;
-  exercises?: Omit<WorkoutExercise, 'id' | 'createdAt'>[];
+  intensity?: WorkoutIntensity | string;
+  exercises?: Omit<WorkoutExercise, "id" | "createdAt">[];
 }
 
 export interface UpdateWorkoutLogInput {
@@ -125,5 +127,5 @@ export interface UpdateWorkoutLogInput {
   duration?: number;
   caloriesBurned?: number;
   notes?: string;
-  exercises?: Omit<WorkoutLogExercise, 'id' | 'createdAt'>[];
+  exercises?: Omit<WorkoutLogExercise, "id" | "createdAt">[];
 }

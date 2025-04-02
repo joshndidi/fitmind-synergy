@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -7,6 +8,22 @@ import { ACHIEVEMENT_DEFINITIONS } from '@/types/achievement';
 export default function useAchievement() {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
+
+  // Helper function to cast DB achievement to our Achievement type
+  const mapAchievement = (achievementData: any): Achievement => ({
+    id: achievementData.id,
+    user_id: achievementData.user_id,
+    type: achievementData.type as AchievementType,
+    tier: achievementData.tier as AchievementTier,
+    title: achievementData.title,
+    description: achievementData.description,
+    icon: achievementData.icon,
+    progress: achievementData.progress,
+    target: achievementData.target,
+    completed: achievementData.completed,
+    completed_at: achievementData.completed_at,
+    name: achievementData.title // For compatibility
+  });
 
   // Fetch user's achievements
   const { data: achievements, isLoading: isLoadingAchievements } = useQuery({
@@ -18,7 +35,7 @@ export default function useAchievement() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Achievement[];
+      return data?.map(mapAchievement) || [];
     }
   });
 
@@ -26,11 +43,11 @@ export default function useAchievement() {
   const { data: progress, isLoading: isLoadingProgress } = useQuery({
     queryKey: ['achievement_progress'],
     queryFn: async () => {
-      const { data: workoutLogs } = await supabase
-        .from('workout_logs')
+      const { data: completedWorkoutLogs } = await supabase
+        .from('completed_workouts')
         .select('*');
 
-      const { data: exercises } = await supabase
+      const { data: workoutExercises } = await supabase
         .from('workout_exercises')
         .select('*');
 
@@ -40,7 +57,7 @@ export default function useAchievement() {
         .order('type');
 
       const { data: exerciseTypes } = await supabase
-        .from('workout_exercises')
+        .from('exercises')
         .select('type')
         .order('type');
 
@@ -50,42 +67,42 @@ export default function useAchievement() {
       const progress: Record<AchievementType, AchievementProgress> = {
         workout_completed: {
           type: 'workout_completed',
-          current: workoutLogs?.length || 0,
+          current: completedWorkoutLogs?.length || 0,
           target: ACHIEVEMENT_DEFINITIONS.workout_completed.tiers.platinum.target,
           tier: 'bronze',
           completed: false
         },
         streak: {
           type: 'streak',
-          current: calculateStreak(workoutLogs || []),
+          current: calculateStreak(completedWorkoutLogs || []),
           target: ACHIEVEMENT_DEFINITIONS.streak.tiers.platinum.target,
           tier: 'bronze',
           completed: false
         },
         total_workouts: {
           type: 'total_workouts',
-          current: workoutLogs?.length || 0,
+          current: completedWorkoutLogs?.length || 0,
           target: ACHIEVEMENT_DEFINITIONS.total_workouts.tiers.platinum.target,
           tier: 'bronze',
           completed: false
         },
         total_exercises: {
           type: 'total_exercises',
-          current: exercises?.length || 0,
+          current: workoutExercises?.length || 0,
           target: ACHIEVEMENT_DEFINITIONS.total_exercises.tiers.platinum.target,
           tier: 'bronze',
           completed: false
         },
         total_duration: {
           type: 'total_duration',
-          current: calculateTotalDuration(workoutLogs || []),
+          current: calculateTotalDuration(completedWorkoutLogs || []),
           target: ACHIEVEMENT_DEFINITIONS.total_duration.tiers.platinum.target,
           tier: 'bronze',
           completed: false
         },
         total_calories: {
           type: 'total_calories',
-          current: calculateTotalCalories(workoutLogs || []),
+          current: calculateTotalCalories(completedWorkoutLogs || []),
           target: ACHIEVEMENT_DEFINITIONS.total_calories.tiers.platinum.target,
           tier: 'bronze',
           completed: false
@@ -142,7 +159,7 @@ export default function useAchievement() {
 
   // Create achievement
   const createAchievement = useMutation({
-    mutationFn: async (achievement: Omit<Achievement, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (achievement: Omit<Achievement, 'id'>) => {
       const { data, error } = await supabase
         .from('achievements')
         .insert([achievement])
@@ -150,7 +167,7 @@ export default function useAchievement() {
         .single();
 
       if (error) throw error;
-      return data;
+      return mapAchievement(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['achievements'] });
@@ -169,7 +186,7 @@ export default function useAchievement() {
         .single();
 
       if (error) throw error;
-      return data;
+      return mapAchievement(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['achievements'] });
@@ -280,5 +297,5 @@ function calculateTotalDuration(workoutLogs: any[]): number {
 }
 
 function calculateTotalCalories(workoutLogs: any[]): number {
-  return workoutLogs.reduce((total, log) => total + (log.calories_burned || 0), 0);
-} 
+  return workoutLogs.reduce((total, log) => total + (log.calories || 0), 0);
+}
