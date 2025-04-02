@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "../integrations/supabase/client";
@@ -69,6 +70,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (session) {
           setSession(session);
           setUser(enhanceUser(session.user));
+          console.log("Initial session found:", session);
+        } else {
+          console.log("No initial session found");
         }
       } catch (error: any) {
         console.error("Error getting initial session:", error.message);
@@ -82,8 +86,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        console.log("Auth state changed:", _event, session);
+      (event, session) => {
+        console.log("Auth state changed:", event, session);
         setSession(session);
         setUser(enhanceUser(session?.user ?? null));
         setLoading(false);
@@ -129,14 +133,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (data?.user) {
+        console.log("Login successful:", data.user);
         setUser(enhanceUser(data.user));
         setSession(data.session);
         toast.success("Logged in successfully");
+      } else {
+        console.error("Login response had no user data");
+        throw new Error("Login failed - no user data returned");
       }
     } catch (err: any) {
       console.error("Login error:", err);
       setError(err.message);
       toast.error(err.message);
+      throw err; // Re-throw to let the component handle it
     } finally {
       setLoading(false);
     }
@@ -162,6 +171,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message);
+      throw err; // Re-throw to let the component handle it
+    } finally {
       setLoading(false);
     }
   };
@@ -189,18 +200,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log("User created successfully:", data.user);
         
         if (data.session) {
+          console.log("User signed in after signup:", data.session);
           setUser(enhanceUser(data.user));
           setSession(data.session);
           toast.success("Account created and logged in successfully!");
         } else {
           // If email confirmation is enabled, guide user
+          console.log("Email confirmation required");
           toast.success("Account created! Please check your email for confirmation.");
         }
+      } else {
+        console.error("Signup response had no user data");
+        throw new Error("Signup failed - no user data returned");
       }
     } catch (err: any) {
       console.error("Signup error:", err);
       setError(err.message);
       toast.error(err.message);
+      throw err; // Re-throw to let the component handle it
     } finally {
       setLoading(false);
     }
