@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -128,8 +128,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
       
-      toast.success("Logged in successfully");
+      if (data?.user) {
+        setUser(enhanceUser(data.user));
+        setSession(data.session);
+        toast.success("Logged in successfully");
+      }
     } catch (err: any) {
+      console.error("Login error:", err);
       setError(err.message);
       toast.error(err.message);
     } finally {
@@ -171,11 +176,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email,
         password,
         options: {
-          // Set email confirmation to true so user can sign in immediately
-          emailRedirectTo: window.location.origin + '/dashboard',
-          data: {
-            email_confirmed: true
-          }
+          emailRedirectTo: window.location.origin + '/dashboard'
         }
       });
       
@@ -187,21 +188,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.user) {
         console.log("User created successfully:", data.user);
         
-        // Sign in the user immediately after signup
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        
-        if (signInError) {
-          throw signInError;
-        }
-        
-        // Check if sign-in was successful
-        if (signInData.session) {
-          console.log("User signed in successfully:", signInData.session);
+        if (data.session) {
+          setUser(enhanceUser(data.user));
+          setSession(data.session);
           toast.success("Account created and logged in successfully!");
         } else {
+          // If email confirmation is enabled, guide user
           toast.success("Account created! Please check your email for confirmation.");
         }
       }
@@ -223,6 +215,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
       
+      setUser(null);
+      setSession(null);
       toast.success("Logged out successfully");
     } catch (err: any) {
       setError(err.message);

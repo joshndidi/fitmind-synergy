@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
@@ -22,12 +23,15 @@ const AuthForm = ({ type }: AuthFormProps) => {
     
     try {
       if (type === "login") {
+        console.log("Attempting login with:", email, password);
         await login(email, password);
       } else {
+        console.log("Attempting signup with:", email, password);
         await signup(email, password);
       }
     } catch (error) {
       console.error("Auth error:", error);
+      toast.error(`Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -36,6 +40,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
       await loginWithGoogle();
     } catch (error) {
       console.error("Google login error:", error);
+      toast.error(`Google login failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -44,6 +49,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
       await login("admin@admin.com", "admin");
     } catch (error) {
       console.error("Admin login error:", error);
+      toast.error(`Admin login failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
