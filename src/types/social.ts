@@ -1,3 +1,4 @@
+
 export type PostType = 'workout' | 'achievement' | 'milestone';
 
 export interface Post {

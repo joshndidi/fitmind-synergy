@@ -1,40 +1,15 @@
-export type Exercise = {
+export type WorkoutType = 'strength' | 'cardio' | 'flexibility' | 'hiit' | 'custom';
+export type WorkoutIntensity = 'Low' | 'Medium' | 'High';
+
+export interface Exercise {
   name: string;
   sets: number;
   reps: string;
   weight: string;
   duration?: number;
   calories?: number;
-};
-
-export type Workout = {
-  id: string;
-  title: string;
-  description: string;
-  calories: number;
-  duration: number;
-  intensity: "High" | "Medium" | "Low";
-  exercises: Exercise[];
-  type: WorkoutType;
-  date: string; // Format: 'yyyy-MM-dd'
-  completedAt?: string;
-  totalWeight?: number;
-};
-
-export type Food = {
-  id: string;
-  description: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  date: string;
-  imageUrl?: string;
-  suggestedAlternatives?: string[];
-};
-
-export type WorkoutType = 'strength' | 'cardio' | 'flexibility' | 'hiit' | 'custom';
-export type WorkoutIntensity = 'beginner' | 'intermediate' | 'advanced';
+  rest?: string;
+}
 
 export interface WorkoutExercise {
   id: string;
@@ -49,6 +24,20 @@ export interface WorkoutExercise {
   createdAt: string;
 }
 
+export interface Workout {
+  id: string;
+  title: string;
+  description?: string;
+  type: WorkoutType;
+  duration: number;
+  calories?: number;
+  intensity: WorkoutIntensity;
+  exercises: Exercise[];
+  date: string;
+  completedAt?: string;
+  totalWeight?: number;
+}
+
 export interface WorkoutPlan {
   id: string;
   userId: string;
@@ -59,11 +48,23 @@ export interface WorkoutPlan {
   calories?: number;
   intensity: WorkoutIntensity;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
   isAiGenerated: boolean;
   isTemplate: boolean;
   exercises: WorkoutExercise[];
 }
+
+export type Food = {
+  id: string;
+  description: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  date: string;
+  imageUrl?: string;
+  suggestedAlternatives?: string[];
+};
 
 export interface WorkoutLogExercise {
   id: string;
