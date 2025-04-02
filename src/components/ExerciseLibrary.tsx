@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,30 +41,15 @@ import {
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { Database } from "@/types/supabase";
 
-// Define Exercise type based on our database schema
-interface Exercise {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  muscle_group: string;
-  difficulty: string;
-  equipment: string[];
-  image_url: string | null;
-  video_url: string | null;
-  description: string | null;
-  instructions: string[] | null;
-  tips: string[] | null;
-  variations: string[] | null;
-  created_at: string;
-}
+type Exercise = Database['public']['Tables']['exercises']['Row'];
 
 const categories = ["All", "Strength", "Cardio", "Flexibility", "Balance"] as const;
 const muscleGroups = ["All", "Chest", "Back", "Legs", "Shoulders", "Arms", "Core"] as const;
 const difficulties = ["All", "Beginner", "Intermediate", "Advanced"] as const;
 
-const difficultyColors: Record<string, string> = {
+const difficultyColors: Record<Exercise["difficulty"], string> = {
   beginner: "bg-green-100 text-green-800",
   intermediate: "bg-yellow-100 text-yellow-800",
   advanced: "bg-red-100 text-red-800"
@@ -85,7 +69,7 @@ export function ExerciseLibrary() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<typeof categories[number]>("All");
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<typeof muscleGroups[number]>("All");
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<Exercise["difficulty"] | null>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [showVideo, setShowVideo] = useState<string | null>(null);
@@ -101,10 +85,11 @@ export function ExerciseLibrary() {
       setLoading(true);
       const { data, error } = await supabase
         .from('exercises')
-        .select('*');
+        .select('*')
+        .returns<Exercise[]>();
 
       if (error) throw error;
-      setExercises(data as Exercise[] || []);
+      setExercises(data || []);
     } catch (error) {
       console.error('Error fetching exercises:', error);
       toast({
@@ -122,13 +107,13 @@ export function ExerciseLibrary() {
     const matchesCategory = selectedCategory === "All" || exercise.category === selectedCategory;
     const matchesMuscleGroup = selectedMuscleGroup === "All" || exercise.muscle_group === selectedMuscleGroup;
     const matchesDifficulty = !selectedDifficulty || exercise.difficulty === selectedDifficulty;
-    const matchesEquipment = !selectedEquipment || (exercise.equipment && exercise.equipment.includes(selectedEquipment));
+    const matchesEquipment = !selectedEquipment || exercise.equipment.includes(selectedEquipment);
 
     return matchesSearch && matchesCategory && matchesMuscleGroup && matchesDifficulty && matchesEquipment;
   });
 
   const uniqueEquipment = Array.from(
-    new Set(exercises.flatMap((exercise) => exercise.equipment || []))
+    new Set(exercises.flatMap((exercise) => exercise.equipment))
   );
 
   return (
@@ -246,7 +231,7 @@ export function ExerciseLibrary() {
                       size="sm"
                       onClick={() => setSelectedEquipment(equipment)}
                     >
-                      {equipmentIcons[equipment as keyof typeof equipmentIcons] || null}
+                      {equipmentIcons[equipment as keyof typeof equipmentIcons]}
                       <span className="ml-2 capitalize">{equipment}</span>
                     </Button>
                   ))}
@@ -288,20 +273,17 @@ export function ExerciseLibrary() {
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="text-lg font-semibold">{exercise.name}</h3>
-                      {exercise.difficulty && (
-                        <Badge className={difficultyColors[exercise.difficulty] || ""}>
-                          {exercise.difficulty}
-                        </Badge>
-                      )}
+                      <Badge className={difficultyColors[exercise.difficulty]}>
+                        {exercise.difficulty}
+                      </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mb-4">
-                      {exercise.description?.slice(0, 100)}
-                      {exercise.description && exercise.description.length > 100 ? '...' : ''}
+                      {exercise.description}
                     </p>
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {exercise.equipment && exercise.equipment.map((item) => (
+                      {exercise.equipment.map((item) => (
                         <Badge key={item} variant="secondary">
-                          {equipmentIcons[item as keyof typeof equipmentIcons] || null}
+                          {equipmentIcons[item as keyof typeof equipmentIcons]}
                           <span className="ml-1 capitalize">{item}</span>
                         </Badge>
                       ))}
@@ -331,38 +313,32 @@ export function ExerciseLibrary() {
                                 <p>{exercise.description}</p>
                               </div>
 
-                              {exercise.instructions && exercise.instructions.length > 0 && (
-                                <div>
-                                  <h4 className="font-semibold mb-2">Instructions</h4>
-                                  <ol className="list-decimal list-inside space-y-2">
-                                    {exercise.instructions.map((instruction, index) => (
-                                      <li key={index}>{instruction}</li>
-                                    ))}
-                                  </ol>
-                                </div>
-                              )}
+                              <div>
+                                <h4 className="font-semibold mb-2">Instructions</h4>
+                                <ol className="list-decimal list-inside space-y-2">
+                                  {exercise.instructions.map((instruction, index) => (
+                                    <li key={index}>{instruction}</li>
+                                  ))}
+                                </ol>
+                              </div>
 
-                              {exercise.tips && exercise.tips.length > 0 && (
-                                <div>
-                                  <h4 className="font-semibold mb-2">Tips</h4>
-                                  <ul className="list-disc list-inside space-y-2">
-                                    {exercise.tips.map((tip, index) => (
-                                      <li key={index}>{tip}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
+                              <div>
+                                <h4 className="font-semibold mb-2">Tips</h4>
+                                <ul className="list-disc list-inside space-y-2">
+                                  {exercise.tips.map((tip, index) => (
+                                    <li key={index}>{tip}</li>
+                                  ))}
+                                </ul>
+                              </div>
 
-                              {exercise.variations && exercise.variations.length > 0 && (
-                                <div>
-                                  <h4 className="font-semibold mb-2">Variations</h4>
-                                  <ul className="list-disc list-inside space-y-2">
-                                    {exercise.variations.map((variation, index) => (
-                                      <li key={index}>{variation}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
+                              <div>
+                                <h4 className="font-semibold mb-2">Variations</h4>
+                                <ul className="list-disc list-inside space-y-2">
+                                  {exercise.variations.map((variation, index) => (
+                                    <li key={index}>{variation}</li>
+                                  ))}
+                                </ul>
+                              </div>
 
                               {exercise.video_url && (
                                 <div>
@@ -409,4 +385,4 @@ export function ExerciseLibrary() {
       )}
     </div>
   );
-}
+} 

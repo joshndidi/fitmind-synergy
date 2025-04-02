@@ -1,7 +1,5 @@
-
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/context/AuthContext';
 import {
   Home,
   Dumbbell,
@@ -15,7 +13,7 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
+  { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Workouts', href: '/workouts', icon: Dumbbell },
   { name: 'Workout AI', href: '/workout-ai', icon: Brain },
   { name: 'Calories', href: '/calories', icon: Flame },
@@ -27,11 +25,6 @@ const navigation = [
 
 export function Navigation() {
   const location = useLocation();
-  const { logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-  };
 
   return (
     <nav className="flex flex-col space-y-1">
@@ -54,11 +47,13 @@ export function Navigation() {
         );
       })}
       <button
-        className="flex items-center px-4 py-2 text-sm font-medium rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-        onClick={handleLogout}
+        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        onClick={() => {
+          // Handle logout
+        }}
       >
-        <LogOut className="mr-3 h-5 w-5" />
-        Logout
+        <LogOut className="h-5 w-5" />
+        <span>Logout</span>
       </button>
     </nav>
   );

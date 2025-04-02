@@ -1,60 +1,25 @@
-
-export type WorkoutType = 'strength' | 'cardio' | 'flexibility' | 'hiit' | 'custom';
-export type WorkoutIntensity = 'Low' | 'Medium' | 'High' | 'beginner' | 'intermediate' | 'advanced';
-
-export interface Exercise {
+export type Exercise = {
   name: string;
   sets: number;
   reps: string;
   weight: string;
   duration?: number;
   calories?: number;
-  rest?: string;
-}
+};
 
-export interface WorkoutExercise {
-  id: string;
-  name: string;
-  sets: number;
-  reps: number;
-  weight?: number;
-  duration?: number;
-  restTime?: number;
-  rest?: string; // Added for compatibility
-  notes?: string;
-  orderIndex: number;
-  createdAt: string;
-}
-
-export interface Workout {
+export type Workout = {
   id: string;
   title: string;
-  description?: string;
-  type: WorkoutType | string;
+  description: string;
+  calories: number;
   duration: number;
-  calories?: number;
-  intensity: WorkoutIntensity;
+  intensity: "High" | "Medium" | "Low";
   exercises: Exercise[];
-  date: string;
+  type: WorkoutType;
+  date: string; // Format: 'yyyy-MM-dd'
   completedAt?: string;
   totalWeight?: number;
-}
-
-export interface WorkoutPlan {
-  id: string;
-  userId: string;
-  title: string;
-  description?: string;
-  type: WorkoutType | string;
-  duration: number;
-  calories?: number;
-  intensity: WorkoutIntensity | string;
-  createdAt: string;
-  updatedAt?: string;
-  isAiGenerated: boolean;
-  isTemplate: boolean;
-  exercises: WorkoutExercise[];
-}
+};
 
 export type Food = {
   id: string;
@@ -67,6 +32,38 @@ export type Food = {
   imageUrl?: string;
   suggestedAlternatives?: string[];
 };
+
+export type WorkoutType = 'strength' | 'cardio' | 'flexibility' | 'hiit' | 'custom';
+export type WorkoutIntensity = 'beginner' | 'intermediate' | 'advanced';
+
+export interface WorkoutExercise {
+  id: string;
+  name: string;
+  sets: number;
+  reps: number;
+  weight?: number;
+  duration?: number;
+  restTime?: number;
+  notes?: string;
+  orderIndex: number;
+  createdAt: string;
+}
+
+export interface WorkoutPlan {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  type: WorkoutType;
+  duration: number;
+  calories?: number;
+  intensity: WorkoutIntensity;
+  createdAt: string;
+  updatedAt: string;
+  isAiGenerated: boolean;
+  isTemplate: boolean;
+  exercises: WorkoutExercise[];
+}
 
 export interface WorkoutLogExercise {
   id: string;
@@ -94,13 +91,13 @@ export interface WorkoutLog {
 export interface CreateWorkoutPlanInput {
   title: string;
   description?: string;
-  type: WorkoutType | string;
+  type: WorkoutType;
   duration: number;
   calories?: number;
-  intensity: WorkoutIntensity | string;
+  intensity: WorkoutIntensity;
   isAiGenerated?: boolean;
   isTemplate?: boolean;
-  exercises: Omit<WorkoutExercise, "id" | "createdAt">[];
+  exercises: Omit<WorkoutExercise, 'id' | 'createdAt'>[];
 }
 
 export interface CreateWorkoutLogInput {
@@ -109,17 +106,17 @@ export interface CreateWorkoutLogInput {
   duration: number;
   caloriesBurned?: number;
   notes?: string;
-  exercises: Omit<WorkoutLogExercise, "id" | "createdAt">[];
+  exercises: Omit<WorkoutLogExercise, 'id' | 'createdAt'>[];
 }
 
 export interface UpdateWorkoutPlanInput {
   title?: string;
   description?: string;
-  type?: WorkoutType | string;
+  type?: WorkoutType;
   duration?: number;
   calories?: number;
-  intensity?: WorkoutIntensity | string;
-  exercises?: Omit<WorkoutExercise, "id" | "createdAt">[];
+  intensity?: WorkoutIntensity;
+  exercises?: Omit<WorkoutExercise, 'id' | 'createdAt'>[];
 }
 
 export interface UpdateWorkoutLogInput {
@@ -127,5 +124,5 @@ export interface UpdateWorkoutLogInput {
   duration?: number;
   caloriesBurned?: number;
   notes?: string;
-  exercises?: Omit<WorkoutLogExercise, "id" | "createdAt">[];
+  exercises?: Omit<WorkoutLogExercise, 'id' | 'createdAt'>[];
 }

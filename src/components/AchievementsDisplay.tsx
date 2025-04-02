@@ -3,19 +3,28 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useWorkout } from "@/hooks/useWorkout";
-import { Achievement } from "@/types/achievement";
+
+type Achievement = {
+  id: string;
+  name: string;
+  description: string;
+  threshold: number;
+  icon: string;
+  achieved: boolean;
+  progress: number;
+};
 
 const AchievementBadge = ({ achievement }: { achievement: Achievement }) => {
   return (
     <div 
-      className={`glass-card-hover p-4 ${achievement.completed ? 'border-primary/40' : ''}`}
+      className={`glass-card-hover p-4 ${achievement.achieved ? 'border-primary/40' : ''}`}
     >
       <div className="text-center mb-2">
         <span className="text-3xl">{achievement.icon}</span>
       </div>
       
       <h3 className="font-bold text-text-light text-center mb-1">
-        {achievement.title}
+        {achievement.name}
       </h3>
       
       <p className="text-text-muted text-sm text-center mb-3">
@@ -24,13 +33,13 @@ const AchievementBadge = ({ achievement }: { achievement: Achievement }) => {
       
       <div className="relative h-2 bg-black/20 rounded-full overflow-hidden mb-2">
         <div 
-          className={`absolute left-0 top-0 h-full ${achievement.completed ? 'bg-primary' : 'bg-primary/40'}`}
+          className={`absolute left-0 top-0 h-full ${achievement.achieved ? 'bg-primary' : 'bg-primary/40'}`}
           style={{ width: `${achievement.progress * 100}%` }}
         />
       </div>
       
       <div className="text-center">
-        {achievement.completed ? (
+        {achievement.achieved ? (
           <Badge className="bg-primary text-white">Achieved</Badge>
         ) : (
           <span className="text-xs text-text-muted">

@@ -1,15 +1,14 @@
-
 export type AchievementType = 
-  'workout_completed' | 
-  'streak' | 
-  'total_workouts' | 
-  'total_exercises' | 
-  'total_duration' | 
-  'total_calories' | 
-  'workout_type' | 
-  'exercise_type' | 
-  'social' | 
-  'meditation';
+  | 'workout_completed'
+  | 'streak'
+  | 'total_workouts'
+  | 'total_exercises'
+  | 'total_duration'
+  | 'total_calories'
+  | 'workout_type'
+  | 'exercise_type'
+  | 'social'
+  | 'meditation';
 
 export type AchievementTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 
@@ -24,10 +23,9 @@ export interface Achievement {
   progress: number;
   target: number;
   completed: boolean;
-  completed_at?: string;
-  name?: string; // Added for compatibility
-  threshold?: number; // Added for compatibility
-  achieved?: boolean; // Added for compatibility
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AchievementProgress {
@@ -38,85 +36,307 @@ export interface AchievementProgress {
   completed: boolean;
 }
 
-export const ACHIEVEMENT_DEFINITIONS = {
+export interface AchievementDefinition {
+  type: AchievementType;
+  tiers: {
+    [key in AchievementTier]: {
+      title: string;
+      description: string;
+      target: number;
+      icon: string;
+    };
+  };
+}
+
+export const ACHIEVEMENT_DEFINITIONS: Record<AchievementType, AchievementDefinition> = {
   workout_completed: {
+    type: 'workout_completed',
     tiers: {
-      bronze: { target: 1, title: 'First Workout', description: 'Complete your first workout', icon: '🏋️‍♂️' },
-      silver: { target: 10, title: 'Regular Exerciser', description: 'Complete 10 workouts', icon: '💪' },
-      gold: { target: 50, title: 'Fitness Enthusiast', description: 'Complete 50 workouts', icon: '🔥' },
-      platinum: { target: 100, title: 'Workout Champion', description: 'Complete 100 workouts', icon: '🏆' }
+      bronze: {
+        title: 'First Workout',
+        description: 'Complete your first workout',
+        target: 1,
+        icon: '🏃‍♂️'
+      },
+      silver: {
+        title: 'Regular Exerciser',
+        description: 'Complete 10 workouts',
+        target: 10,
+        icon: '🏃‍♂️'
+      },
+      gold: {
+        title: 'Workout Warrior',
+        description: 'Complete 50 workouts',
+        target: 50,
+        icon: '🏃‍♂️'
+      },
+      platinum: {
+        title: 'Fitness Legend',
+        description: 'Complete 100 workouts',
+        target: 100,
+        icon: '🏃‍♂️'
+      }
     }
   },
   streak: {
+    type: 'streak',
     tiers: {
-      bronze: { target: 3, title: '3-Day Streak', description: 'Complete workouts for 3 days straight', icon: '📅' },
-      silver: { target: 7, title: 'Weekly Warrior', description: 'Complete workouts for 7 days straight', icon: '🔄' },
-      gold: { target: 30, title: 'Monthly Momentum', description: 'Complete workouts for 30 days straight', icon: '📊' },
-      platinum: { target: 365, title: 'Year-Long Grind', description: 'Complete workouts for 365 days straight', icon: '🗓️' }
+      bronze: {
+        title: 'Getting Started',
+        description: 'Maintain a 3-day workout streak',
+        target: 3,
+        icon: '🔥'
+      },
+      silver: {
+        title: 'Consistent',
+        description: 'Maintain a 7-day workout streak',
+        target: 7,
+        icon: '🔥'
+      },
+      gold: {
+        title: 'Dedicated',
+        description: 'Maintain a 30-day workout streak',
+        target: 30,
+        icon: '🔥'
+      },
+      platinum: {
+        title: 'Unstoppable',
+        description: 'Maintain a 100-day workout streak',
+        target: 100,
+        icon: '🔥'
+      }
     }
   },
   total_workouts: {
+    type: 'total_workouts',
     tiers: {
-      bronze: { target: 5, title: 'Getting Started', description: 'Complete 5 workouts', icon: '🏁' },
-      silver: { target: 25, title: 'Building Consistency', description: 'Complete 25 workouts', icon: '📈' },
-      gold: { target: 100, title: 'Dedicated Trainer', description: 'Complete 100 workouts', icon: '⚡' },
-      platinum: { target: 500, title: 'Fitness Legend', description: 'Complete 500 workouts', icon: '👑' }
+      bronze: {
+        title: 'Beginner',
+        description: 'Complete 5 total workouts',
+        target: 5,
+        icon: '📊'
+      },
+      silver: {
+        title: 'Intermediate',
+        description: 'Complete 25 total workouts',
+        target: 25,
+        icon: '📊'
+      },
+      gold: {
+        title: 'Advanced',
+        description: 'Complete 100 total workouts',
+        target: 100,
+        icon: '📊'
+      },
+      platinum: {
+        title: 'Master',
+        description: 'Complete 500 total workouts',
+        target: 500,
+        icon: '📊'
+      }
     }
   },
   total_exercises: {
+    type: 'total_exercises',
     tiers: {
-      bronze: { target: 10, title: 'Exercise Explorer', description: 'Try 10 different exercises', icon: '🔍' },
-      silver: { target: 50, title: 'Versatile Athlete', description: 'Try 50 different exercises', icon: '🔄' },
-      gold: { target: 200, title: 'Exercise Expert', description: 'Try 200 different exercises', icon: '🧠' },
-      platinum: { target: 500, title: 'Master of Movement', description: 'Try 500 different exercises', icon: '🎯' }
+      bronze: {
+        title: 'Exercise Explorer',
+        description: 'Complete 10 different exercises',
+        target: 10,
+        icon: '💪'
+      },
+      silver: {
+        title: 'Exercise Expert',
+        description: 'Complete 25 different exercises',
+        target: 25,
+        icon: '💪'
+      },
+      gold: {
+        title: 'Exercise Master',
+        description: 'Complete 50 different exercises',
+        target: 50,
+        icon: '💪'
+      },
+      platinum: {
+        title: 'Exercise Legend',
+        description: 'Complete 100 different exercises',
+        target: 100,
+        icon: '💪'
+      }
     }
   },
   total_duration: {
+    type: 'total_duration',
     tiers: {
-      bronze: { target: 60 * 60, title: 'One Hour Trained', description: 'Train for a total of 1 hour', icon: '⏱️' },
-      silver: { target: 5 * 60 * 60, title: 'Five Hours Trained', description: 'Train for a total of 5 hours', icon: '⏳' },
-      gold: { target: 24 * 60 * 60, title: 'One Day Trained', description: 'Train for a total of 24 hours', icon: '🕰️' },
-      platinum: { target: 7 * 24 * 60 * 60, title: 'One Week Trained', description: 'Train for a total of 1 week', icon: '⌛' }
+      bronze: {
+        title: 'Time Builder',
+        description: 'Accumulate 60 minutes of workout time',
+        target: 60,
+        icon: '⏱️'
+      },
+      silver: {
+        title: 'Time Master',
+        description: 'Accumulate 300 minutes of workout time',
+        target: 300,
+        icon: '⏱️'
+      },
+      gold: {
+        title: 'Time Champion',
+        description: 'Accumulate 1000 minutes of workout time',
+        target: 1000,
+        icon: '⏱️'
+      },
+      platinum: {
+        title: 'Time Legend',
+        description: 'Accumulate 5000 minutes of workout time',
+        target: 5000,
+        icon: '⏱️'
+      }
     }
   },
   total_calories: {
+    type: 'total_calories',
     tiers: {
-      bronze: { target: 1000, title: 'First 1,000 Calories', description: 'Burn 1,000 calories through workouts', icon: '🔥' },
-      silver: { target: 10000, title: '10,000 Calories Burned', description: 'Burn 10,000 calories through workouts', icon: '💪' },
-      gold: { target: 50000, title: '50,000 Calories Burned', description: 'Burn 50,000 calories through workouts', icon: '⚡' },
-      platinum: { target: 100000, title: '100,000 Calories Burned', description: 'Burn 100,000 calories through workouts', icon: '🚀' }
+      bronze: {
+        title: 'Calorie Burner',
+        description: 'Burn 500 calories in workouts',
+        target: 500,
+        icon: '🔥'
+      },
+      silver: {
+        title: 'Calorie Master',
+        description: 'Burn 2500 calories in workouts',
+        target: 2500,
+        icon: '🔥'
+      },
+      gold: {
+        title: 'Calorie Champion',
+        description: 'Burn 10000 calories in workouts',
+        target: 10000,
+        icon: '🔥'
+      },
+      platinum: {
+        title: 'Calorie Legend',
+        description: 'Burn 50000 calories in workouts',
+        target: 50000,
+        icon: '🔥'
+      }
     }
   },
   workout_type: {
+    type: 'workout_type',
     tiers: {
-      bronze: { target: 2, title: 'Variety Starter', description: 'Try 2 different workout types', icon: '🔄' },
-      silver: { target: 3, title: 'Multi-Discipline', description: 'Try 3 different workout types', icon: '🔄' },
-      gold: { target: 4, title: 'Versatile Training', description: 'Try 4 different workout types', icon: '🔄' },
-      platinum: { target: 5, title: 'All-Rounder', description: 'Try 5 different workout types', icon: '🔄' }
+      bronze: {
+        title: 'Type Explorer',
+        description: 'Try 2 different workout types',
+        target: 2,
+        icon: '🎯'
+      },
+      silver: {
+        title: 'Type Expert',
+        description: 'Try 4 different workout types',
+        target: 4,
+        icon: '🎯'
+      },
+      gold: {
+        title: 'Type Master',
+        description: 'Try 6 different workout types',
+        target: 6,
+        icon: '🎯'
+      },
+      platinum: {
+        title: 'Type Legend',
+        description: 'Try all workout types',
+        target: 8,
+        icon: '🎯'
+      }
     }
   },
   exercise_type: {
+    type: 'exercise_type',
     tiers: {
-      bronze: { target: 5, title: 'Exercise Sampler', description: 'Try 5 different exercise types', icon: '🔄' },
-      silver: { target: 10, title: 'Exercise Explorer', description: 'Try 10 different exercise types', icon: '🔄' },
-      gold: { target: 20, title: 'Exercise Enthusiast', description: 'Try 20 different exercise types', icon: '🔄' },
-      platinum: { target: 30, title: 'Exercise Master', description: 'Try 30 different exercise types', icon: '🔄' }
+      bronze: {
+        title: 'Exercise Explorer',
+        description: 'Try 3 different exercise types',
+        target: 3,
+        icon: '💪'
+      },
+      silver: {
+        title: 'Exercise Expert',
+        description: 'Try 5 different exercise types',
+        target: 5,
+        icon: '💪'
+      },
+      gold: {
+        title: 'Exercise Master',
+        description: 'Try 8 different exercise types',
+        target: 8,
+        icon: '💪'
+      },
+      platinum: {
+        title: 'Exercise Legend',
+        description: 'Try all exercise types',
+        target: 12,
+        icon: '💪'
+      }
     }
   },
   social: {
+    type: 'social',
     tiers: {
-      bronze: { target: 1, title: 'Social Butterfly', description: 'Share your first workout', icon: '📱' },
-      silver: { target: 5, title: 'Community Contributor', description: 'Share 5 workouts', icon: '👥' },
-      gold: { target: 10, title: 'Social Influencer', description: 'Share 10 workouts', icon: '🌟' },
-      platinum: { target: 20, title: 'Fitness Advocate', description: 'Share 20 workouts', icon: '🏆' }
+      bronze: {
+        title: 'Social Butterfly',
+        description: 'Share 1 workout',
+        target: 1,
+        icon: '🦋'
+      },
+      silver: {
+        title: 'Social Expert',
+        description: 'Share 5 workouts',
+        target: 5,
+        icon: '🦋'
+      },
+      gold: {
+        title: 'Social Master',
+        description: 'Share 10 workouts',
+        target: 10,
+        icon: '🦋'
+      },
+      platinum: {
+        title: 'Social Legend',
+        description: 'Share 25 workouts',
+        target: 25,
+        icon: '🦋'
+      }
     }
   },
   meditation: {
+    type: 'meditation',
     tiers: {
-      bronze: { target: 1, title: 'Mindful Beginner', description: 'Meditate for the first time', icon: '🧘‍♂️' },
-      silver: { target: 7, title: 'Weekly Zen', description: 'Meditate for 7 days', icon: '🧘‍♀️' },
-      gold: { target: 30, title: 'Monthly Mindfulness', description: 'Meditate for 30 days', icon: '✨' },
-      platinum: { target: 365, title: 'Year of Peace', description: 'Meditate for 365 days', icon: '☮️' }
+      bronze: {
+        title: 'Mindful Beginner',
+        description: 'Complete 5 minutes of meditation',
+        target: 5,
+        icon: '🧘‍♂️'
+      },
+      silver: {
+        title: 'Mindful Explorer',
+        description: 'Complete 30 minutes of meditation',
+        target: 30,
+        icon: '🧘‍♂️'
+      },
+      gold: {
+        title: 'Mindful Master',
+        description: 'Complete 120 minutes of meditation',
+        target: 120,
+        icon: '🧘‍♂️'
+      },
+      platinum: {
+        title: 'Mindful Legend',
+        description: 'Complete 300 minutes of meditation',
+        target: 300,
+        icon: '🧘‍♂️'
+      }
     }
   }
-};
+}; 

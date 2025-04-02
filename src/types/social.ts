@@ -1,10 +1,9 @@
-
 export type PostType = 'workout' | 'achievement' | 'milestone';
 
 export interface Post {
   id: string;
   user_id: string;
-  type?: PostType;
+  type: PostType;
   content: string;
   media_url?: string;
   likes_count: number;
@@ -31,15 +30,14 @@ export interface Like {
 
 export interface UserProfile {
   id: string;
-  username?: string;
-  full_name?: string;
-  display_name?: string;
+  username: string;
+  full_name: string;
   avatar_url?: string;
   bio?: string;
-  followers_count?: number;
-  following_count?: number;
+  followers_count: number;
+  following_count: number;
   created_at: string;
-  updated_at?: string;
+  updated_at: string;
 }
 
 export interface Follow {
@@ -55,4 +53,4 @@ export interface SocialStats {
   following_count: number;
   total_likes: number;
   total_comments: number;
-}
+} 
