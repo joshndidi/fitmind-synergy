@@ -191,7 +191,7 @@ const WorkoutDisplay = () => {
           calories: 0, // We'll calculate this later
           rest: ex.rest
         })),
-        date: today,
+        date: today, // Adding the required 'date' property
         completedAt: new Date().toISOString(),
         totalWeight: workout.exercises.reduce(
           (sum, ex) => sum + (ex.weight || 0),

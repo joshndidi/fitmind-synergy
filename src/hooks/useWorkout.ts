@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -7,7 +6,9 @@ import {
   WorkoutExercise, 
   Exercise,
   WorkoutType,
-  WorkoutIntensity 
+  WorkoutIntensity,
+  CreateWorkoutPlanInput,
+  UpdateWorkoutPlanInput
 } from '@/types/workout';
 import { Database } from '@/types/supabase';
 

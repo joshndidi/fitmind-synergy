@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { WorkoutExecution } from "@/components/WorkoutExecution";
@@ -11,8 +10,12 @@ interface ExecutionExercise {
   sets: number;
   reps: number;
   weight?: number;
-  rest: number;
+  restTime: number; // Ensuring this property exists to match Exercise type
+  rest?: number;
   notes?: string;
+  orderIndex?: number; // Adding optional orderIndex to match WorkoutExercise
+  completed?: boolean;
+  currentSet?: number;
 }
 
 interface ExecutionWorkoutPlan {
@@ -22,8 +25,8 @@ interface ExecutionWorkoutPlan {
   difficulty: "beginner" | "intermediate" | "advanced";
   duration: number;
   exercises: ExecutionExercise[];
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export function WorkoutExecutionPage() {
@@ -47,7 +50,7 @@ export function WorkoutExecutionPage() {
           name: "Bench Press",
           sets: 4,
           reps: 8,
-          rest: 90,
+          restTime: 90,
           notes: "Focus on controlled movement",
         },
         {
@@ -55,7 +58,7 @@ export function WorkoutExecutionPage() {
           name: "Squats",
           sets: 4,
           reps: 10,
-          rest: 90,
+          restTime: 90,
           notes: "Keep back straight",
         },
         {
@@ -63,7 +66,7 @@ export function WorkoutExecutionPage() {
           name: "Deadlifts",
           sets: 3,
           reps: 6,
-          rest: 120,
+          restTime: 120,
           notes: "Maintain proper form",
         },
       ],
@@ -110,9 +113,9 @@ export function WorkoutExecutionPage() {
 
   return (
     <WorkoutExecution
-      plan={workoutPlan}
+      plan={workoutPlan as any} // Using type assertion as a temporary solution
       onComplete={handleComplete}
       onCancel={handleCancel}
     />
   );
-} 
+}
