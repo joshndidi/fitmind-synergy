@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -6,7 +7,7 @@ import { Dumbbell, Brain } from "lucide-react";
 
 const Index = () => {
   const [authType, setAuthType] = useState<"login" | "signup">("login");
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [loaded, setLoaded] = useState(false);
 
@@ -15,11 +16,21 @@ const Index = () => {
       navigate("/dashboard");
     }
     
-    // Simulate loading for smooth animation
-    setTimeout(() => {
-      setLoaded(true);
-    }, 100);
-  }, [user, navigate]);
+    // Simulate loading for smooth animation only if not actually loading auth
+    if (!loading) {
+      setTimeout(() => {
+        setLoaded(true);
+      }, 100);
+    }
+  }, [user, navigate, loading]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12">

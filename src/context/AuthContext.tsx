@@ -57,8 +57,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        console.log("Auth state changed:", _event, session);
+      (event, session) => {
+        console.log("Auth state changed:", event, session);
         setSession(session);
         setUser(enhanceUser(session?.user ?? null));
         setLoading(false);
@@ -130,6 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (data.user) {
+        console.log("Login successful:", data.user);
         toast.success("Logged in successfully");
       }
     } catch (err: any) {

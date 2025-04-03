@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import { Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 type AuthFormProps = {
   type: "login" | "signup";
@@ -12,6 +14,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { login, signup, loginWithGoogle, loading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,11 +26,15 @@ const AuthForm = ({ type }: AuthFormProps) => {
     
     try {
       if (type === "login") {
-        toast.loading("Signing in...");
+        const id = toast.loading("Signing in...");
         await login(email, password);
+        toast.dismiss(id);
+        navigate("/dashboard");
       } else {
-        toast.loading("Creating account...");
+        const id = toast.loading("Creating account...");
         await signup(email, password);
+        toast.dismiss(id);
+        navigate("/dashboard");
       }
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -46,8 +53,10 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
   const handleAdminLogin = async () => {
     try {
-      toast.loading("Logging in as admin...");
+      const id = toast.loading("Logging in as admin...");
       await login("admin@admin.com", "admin");
+      toast.dismiss(id);
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Admin login error:", error);
       toast.error(error.message || "Admin login failed");
@@ -89,10 +98,10 @@ const AuthForm = ({ type }: AuthFormProps) => {
           />
         </div>
         
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className="btn-primary w-full"
+          className="w-full"
         >
           {loading ? (
             <span className="flex items-center justify-center">
@@ -105,18 +114,19 @@ const AuthForm = ({ type }: AuthFormProps) => {
           ) : (
             type === "login" ? "Sign In" : "Create Account"
           )}
-        </button>
+        </Button>
       </form>
       
       <div className="mt-6">
         <p className="text-text-muted text-sm mb-4">or</p>
         
         <div className="space-y-3">
-          <button
+          <Button
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="btn-secondary w-full flex items-center justify-center gap-2"
+            variant="secondary"
+            className="w-full flex items-center justify-center gap-2"
           >
             <svg
               className="w-5 h-5"
@@ -141,17 +151,18 @@ const AuthForm = ({ type }: AuthFormProps) => {
               />
             </svg>
             <span>Continue with Google</span>
-          </button>
+          </Button>
           
           {type === "login" && (
-            <button
+            <Button
               type="button"
               onClick={handleAdminLogin}
-              className="btn-tertiary w-full flex items-center justify-center gap-2"
+              variant="outline"
+              className="w-full flex items-center justify-center gap-2"
             >
               <Shield size={18} />
               <span>Admin access (admin@admin.com / admin)</span>
-            </button>
+            </Button>
           )}
         </div>
       </div>
