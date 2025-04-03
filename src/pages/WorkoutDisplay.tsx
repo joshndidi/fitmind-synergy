@@ -136,6 +136,7 @@ const WorkoutDisplay = () => {
       completeWorkout({
         ...workout,
         date: today, // Add the required 'date' property
+        description: workout.description || 'Completed workout', // Ensure description is always provided
         completedAt: new Date().toISOString(),
         totalWeight: workout.exercises.reduce(
           (sum: number, ex: WorkoutExercise) => sum + (ex.weight || 0),
@@ -179,7 +180,7 @@ const WorkoutDisplay = () => {
       const completedWorkout: Workout = {
         id: workout.id,
         title: workout.title,
-        description: workout.description || '',
+        description: workout.description || 'Completed workout', // Ensure description is always provided
         type: workout.type,
         duration: timer,
         calories: workout.calories || 0,
@@ -194,7 +195,7 @@ const WorkoutDisplay = () => {
           calories: 0, // We'll calculate this later
           rest: ex.rest
         })),
-        date: today, // Adding the required 'date' property
+        date: today,
         completedAt: new Date().toISOString(),
         totalWeight: workout.exercises.reduce(
           (sum, ex) => sum + (ex.weight || 0),
