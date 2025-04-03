@@ -135,19 +135,36 @@ const WorkoutDisplay = () => {
   const handleCompleteWorkout = () => {
     if (workout) {
       const today = new Date().toISOString().split('T')[0];
+      
+      // Create an array of Exercise objects from WorkoutExercise objects
+      const exercisesConverted: Exercise[] = workout.exercises.map(ex => ({
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps.toString(), // Convert number to string to match Exercise type
+        weight: ex.weight ? ex.weight.toString() : '0',
+        duration: ex.duration,
+        calories: 0,
+        rest: ex.rest || `${ex.restTime}s` || '60s'
+      }));
+      
       completeWorkout({
-        ...workout,
-        date: today,
+        id: workout.id,
+        title: workout.title,
         description: workout.description || 'Completed workout',
         calories: workout.calories || 0,
-        completedAt: new Date().toISOString(),
+        duration: workout.duration,
         intensity: workout.intensity === 'beginner' ? 'Low' : 
                   workout.intensity === 'intermediate' ? 'Medium' : 'High',
+        exercises: exercisesConverted,
+        type: workout.type,
+        date: today,
+        completedAt: new Date().toISOString(),
         totalWeight: workout.exercises.reduce(
-          (sum: number, ex: WorkoutExercise) => sum + (ex.weight || 0),
+          (sum, ex) => sum + (ex.weight || 0),
           0
         ),
       });
+      
       toast.success("Workout completed! Great job!");
       
       // Clear progress after completing
@@ -182,6 +199,18 @@ const WorkoutDisplay = () => {
     
     try {
       const today = new Date().toISOString().split('T')[0];
+      
+      // Convert WorkoutExercise to Exercise format
+      const exercisesConverted: Exercise[] = workout.exercises.map(ex => ({
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps.toString(), // Convert number to string
+        weight: ex.weight ? ex.weight.toString() : '0',
+        duration: ex.duration,
+        calories: 0,
+        rest: ex.rest || `${ex.restTime}s` || '60s'
+      }));
+      
       const completedWorkout: Workout = {
         id: workout.id,
         title: workout.title,
@@ -191,15 +220,7 @@ const WorkoutDisplay = () => {
         calories: workout.calories || 0,
         intensity: workout.intensity === 'beginner' ? 'Low' : 
                   workout.intensity === 'intermediate' ? 'Medium' : 'High',
-        exercises: workout.exercises.map(ex => ({
-          name: ex.name,
-          sets: ex.sets,
-          reps: ex.reps.toString(),
-          weight: ex.weight?.toString() || '0',
-          duration: ex.duration,
-          calories: 0,
-          rest: ex.rest
-        })),
+        exercises: exercisesConverted,
         date: today,
         completedAt: new Date().toISOString(),
         totalWeight: workout.exercises.reduce(
@@ -263,38 +284,40 @@ const WorkoutDisplay = () => {
         {/* Left side - Workout details */}
         <div className="w-full lg:w-1/3">
           <div className="glass-card p-4 md:p-6 sticky top-24">
-            <h1 className="text-xl md:text-2xl font-bold text-text-light mb-3">{workout.title}</h1>
-            <p className="text-sm md:text-base text-text-muted mb-4 line-clamp-3">{workout.description}</p>
+            <h1 className="text-xl md:text-2xl font-bold text-text-light mb-3 break-words">{workout?.title}</h1>
+            <p className="text-sm md:text-base text-text-muted mb-4 line-clamp-3">{workout?.description}</p>
             
             <div className="flex flex-wrap gap-2 md:gap-3 mb-4 md:mb-6">
               <Badge className="bg-primary/20 text-primary border-none px-2 py-1 md:px-3 md:py-1.5 flex items-center gap-1.5 text-xs md:text-sm">
                 <Clock size={14} />
-                {workout.duration} min
+                {workout?.duration} min
               </Badge>
               <Badge className="bg-primary/20 text-primary border-none px-2 py-1 md:px-3 md:py-1.5 flex items-center gap-1.5 text-xs md:text-sm">
                 <BarChart3 size={14} />
-                {workout.intensity}
+                {workout?.intensity}
               </Badge>
               <Badge className="bg-primary/20 text-primary border-none px-2 py-1 md:px-3 md:py-1.5 flex items-center gap-1.5 text-xs md:text-sm">
                 <Dumbbell size={14} />
-                {workout.calories} cal
+                {workout?.calories || 0} cal
               </Badge>
             </div>
             
-            <div className="space-y-3">
-              <div className="flex justify-between text-xs md:text-sm">
-                <span className="text-text-muted">Progress</span>
-                <span className="text-text-light">
-                  {completed.filter(Boolean).length}/{workout.exercises.length}
-                </span>
+            {workout && (
+              <div className="space-y-3">
+                <div className="flex justify-between text-xs md:text-sm">
+                  <span className="text-text-muted">Progress</span>
+                  <span className="text-text-light">
+                    {completed.filter(Boolean).length}/{workout.exercises.length}
+                  </span>
+                </div>
+                <div className="w-full bg-white/10 rounded-full h-2.5">
+                  <div
+                    className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${(completed.filter(Boolean).length / workout.exercises.length) * 100}%` }}
+                  ></div>
+                </div>
               </div>
-              <div className="w-full bg-white/10 rounded-full h-2.5">
-                <div
-                  className="bg-primary h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${(completed.filter(Boolean).length / workout.exercises.length) * 100}%` }}
-                ></div>
-              </div>
-            </div>
+            )}
             
             {isWorkoutComplete && (
               <button
@@ -318,57 +341,59 @@ const WorkoutDisplay = () => {
           <div className="glass-card p-4 md:p-6">
             <h2 className="text-lg md:text-xl font-bold text-text-light mb-4 md:mb-6">Exercises</h2>
             
-            <div className="space-y-4 md:space-y-6">
-              {workout.exercises.map((exercise: WorkoutExercise, index: number) => (
-                <div
-                  key={index}
-                  className={`border rounded-lg p-3 md:p-4 transition-colors ${
-                    completed[index]
-                      ? "border-primary/30 bg-primary/5"
-                      : "border-white/10 hover:border-white/20"
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2 md:mb-3">
-                    <h3 className="text-base md:text-lg font-medium text-text-light">
-                      {index + 1}. {exercise.name}
-                    </h3>
-                    <button
-                      onClick={() => handleExerciseComplete(index)}
-                      className={`p-1 rounded-full transition-colors ${
-                        completed[index]
-                          ? "text-primary bg-primary/20"
-                          : "text-text-muted bg-white/10 hover:bg-white/20"
-                      }`}
-                    >
-                      <CheckCircle2 size={18} />
-                    </button>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-2 md:gap-3 text-xs md:text-sm">
-                    <div className="bg-white/5 p-2 md:p-3 rounded-lg">
-                      <div className="text-text-muted mb-1">Sets</div>
-                      <div className="text-text-light font-medium">{exercise.sets}</div>
+            {workout && (
+              <div className="space-y-4 md:space-y-6 max-h-[60vh] overflow-y-auto pr-1 md:pr-2">
+                {workout.exercises.map((exercise: WorkoutExercise, index: number) => (
+                  <div
+                    key={index}
+                    className={`border rounded-lg p-3 md:p-4 transition-colors ${
+                      completed[index]
+                        ? "border-primary/30 bg-primary/5"
+                        : "border-white/10 hover:border-white/20"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2 md:mb-3">
+                      <h3 className="text-base md:text-lg font-medium text-text-light break-words">
+                        {index + 1}. {exercise.name}
+                      </h3>
+                      <button
+                        onClick={() => handleExerciseComplete(index)}
+                        className={`p-1 rounded-full transition-colors flex-shrink-0 ml-2 ${
+                          completed[index]
+                            ? "text-primary bg-primary/20"
+                            : "text-text-muted bg-white/10 hover:bg-white/20"
+                        }`}
+                      >
+                        <CheckCircle2 size={18} />
+                      </button>
                     </div>
-                    <div className="bg-white/5 p-2 md:p-3 rounded-lg">
-                      <div className="text-text-muted mb-1">Reps</div>
-                      <div className="text-text-light font-medium">{exercise.reps}</div>
-                    </div>
-                    <div className="bg-white/5 p-2 md:p-3 rounded-lg">
-                      <div className="text-text-muted mb-1">Weight</div>
-                      <div className="text-text-light font-medium text-sm md:text-base truncate">
-                        {exercise.weight || 'Bodyweight'}
+                    
+                    <div className="grid grid-cols-3 gap-2 md:gap-3 text-xs md:text-sm">
+                      <div className="bg-white/5 p-2 md:p-3 rounded-lg">
+                        <div className="text-text-muted mb-1">Sets</div>
+                        <div className="text-text-light font-medium">{exercise.sets}</div>
+                      </div>
+                      <div className="bg-white/5 p-2 md:p-3 rounded-lg">
+                        <div className="text-text-muted mb-1">Reps</div>
+                        <div className="text-text-light font-medium">{exercise.reps}</div>
+                      </div>
+                      <div className="bg-white/5 p-2 md:p-3 rounded-lg">
+                        <div className="text-text-muted mb-1">Weight</div>
+                        <div className="text-text-light font-medium text-sm md:text-base truncate">
+                          {exercise.weight || 'Bodyweight'}
+                        </div>
                       </div>
                     </div>
+                    
+                    {exercise.rest && (
+                      <div className="mt-2 md:mt-3 text-xs md:text-sm text-text-muted">
+                        Rest: {exercise.rest}
+                      </div>
+                    )}
                   </div>
-                  
-                  {exercise.rest && (
-                    <div className="mt-2 md:mt-3 text-xs md:text-sm text-text-muted">
-                      Rest: {exercise.rest}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -379,24 +404,28 @@ const WorkoutDisplay = () => {
             <CardTitle className="text-lg md:text-xl">Workout Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground mb-4 text-sm md:text-base line-clamp-2">{workout.description}</p>
-            <div className="space-y-2 md:space-y-4 max-h-64 overflow-y-auto pr-1">
-              {workout.exercises.map((exercise: WorkoutExercise) => (
-                <div
-                  key={exercise.id}
-                  className="flex items-center justify-between p-2 md:p-4 border rounded-lg"
-                >
-                  <div className="overflow-hidden">
-                    <h3 className="font-medium text-sm md:text-base truncate">{exercise.name}</h3>
-                    <p className="text-xs md:text-sm text-muted-foreground truncate">
-                      {exercise.sets} sets × {exercise.reps} reps
-                      {exercise.weight && ` × ${exercise.weight}kg`}
-                    </p>
+            <p className="text-muted-foreground mb-4 text-sm md:text-base line-clamp-2">{workout?.description}</p>
+            
+            {workout && (
+              <div className="space-y-2 md:space-y-4 max-h-64 overflow-y-auto pr-1">
+                {workout.exercises.map((exercise: WorkoutExercise, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2 md:p-4 border rounded-lg"
+                  >
+                    <div className="overflow-hidden min-w-0 flex-1">
+                      <h3 className="font-medium text-sm md:text-base truncate">{exercise.name}</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground truncate">
+                        {exercise.sets} sets × {exercise.reps} reps
+                        {exercise.weight && ` × ${exercise.weight}kg`}
+                      </p>
+                    </div>
+                    <Timer className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
                   </div>
-                  <Timer className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+            
             <Button
               className="w-full mt-4 md:mt-6"
               onClick={startWorkout}
@@ -411,50 +440,58 @@ const WorkoutDisplay = () => {
             <CardTitle className="text-lg md:text-xl">Current Exercise</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-center space-y-4 md:space-y-6">
-              <h2 className="text-xl md:text-3xl font-bold">{currentExercise.name}</h2>
-              <div className="grid grid-cols-3 gap-2 md:gap-4">
-                <div className="text-center">
-                  <p className="text-xs md:text-sm text-muted-foreground">Sets</p>
-                  <p className="text-lg md:text-2xl font-bold">{currentExercise.sets}</p>
+            {workout && (
+              <div className="text-center space-y-4 md:space-y-6">
+                <h2 className="text-xl md:text-3xl font-bold break-words">
+                  {workout.exercises[currentExerciseIndex].name}
+                </h2>
+                <div className="grid grid-cols-3 gap-2 md:gap-4">
+                  <div className="text-center">
+                    <p className="text-xs md:text-sm text-muted-foreground">Sets</p>
+                    <p className="text-lg md:text-2xl font-bold">
+                      {workout.exercises[currentExerciseIndex].sets}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs md:text-sm text-muted-foreground">Reps</p>
+                    <p className="text-lg md:text-2xl font-bold">
+                      {workout.exercises[currentExerciseIndex].reps}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs md:text-sm text-muted-foreground">Weight</p>
+                    <p className="text-lg md:text-2xl font-bold truncate">
+                      {workout.exercises[currentExerciseIndex].weight || 'BW'}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs md:text-sm text-muted-foreground">Reps</p>
-                  <p className="text-lg md:text-2xl font-bold">{currentExercise.reps}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs md:text-sm text-muted-foreground">Weight</p>
-                  <p className="text-lg md:text-2xl font-bold truncate">
-                    {currentExercise.weight || 'BW'}
-                  </p>
-                </div>
-              </div>
 
-              {isResting ? (
-                <div className="space-y-2 md:space-y-4">
-                  <h3 className="text-lg md:text-xl font-semibold">Rest Time</h3>
-                  <p className="text-2xl md:text-4xl font-bold">
-                    {Math.floor(restTimer / 60)}:
-                    {(restTimer % 60).toString().padStart(2, '0')}
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={endRest}
-                    disabled={restTimer > 0}
-                    className="px-3 py-1 md:px-4 md:py-2 text-sm md:text-base"
+                {isResting ? (
+                  <div className="space-y-2 md:space-y-4">
+                    <h3 className="text-lg md:text-xl font-semibold">Rest Time</h3>
+                    <p className="text-2xl md:text-4xl font-bold">
+                      {Math.floor(restTimer / 60)}:
+                      {(restTimer % 60).toString().padStart(2, '0')}
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={endRest}
+                      disabled={restTimer > 0}
+                      className="px-3 py-1 md:px-4 md:py-2 text-sm md:text-base"
+                    >
+                      Skip Rest
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    onClick={startRest}
+                    className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base"
                   >
-                    Skip Rest
+                    Start Rest
                   </Button>
-                </div>
-              ) : (
-                <Button 
-                  onClick={startRest}
-                  className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base"
-                >
-                  Start Rest
-                </Button>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
