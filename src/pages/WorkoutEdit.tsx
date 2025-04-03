@@ -100,16 +100,17 @@ export default function WorkoutEdit() {
     e.preventDefault();
     try {
       await updateWorkoutPlan(id!, {
-        name: formData.name,
+        title: formData.name,
         description: formData.description,
         duration: parseInt(formData.duration),
-        difficulty: formData.difficulty,
-        exercises: formData.exercises.map((exercise) => ({
+        intensity: formData.difficulty,
+        exercises: formData.exercises.map((exercise, index) => ({
           name: exercise.name,
           sets: parseInt(exercise.sets),
           reps: parseInt(exercise.reps),
           weight: parseFloat(exercise.weight),
-          notes: exercise.notes
+          notes: exercise.notes,
+          orderIndex: index // Add orderIndex property
         }))
       });
       toast.success('Workout plan updated successfully');

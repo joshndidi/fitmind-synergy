@@ -374,14 +374,35 @@ export const useWorkout = () => {
         if (exerciseError) throw exerciseError;
       }
       
-      // Update the state
+      // Update the state - fixed by ensuring the proper WorkoutPlan structure
       setWorkoutPlans(prev => prev.map(w => {
         if (w.id === id) {
-          return {
-            ...w,
-            ...plan,
-            updatedAt: new Date().toISOString()
+          // Create a proper WorkoutPlan object by maintaining the structure
+          const updatedPlan: WorkoutPlan = {
+            ...w, // Keep all existing properties
+            title: plan.title || w.title,
+            description: plan.description || w.description,
+            type: plan.type || w.type,
+            duration: plan.duration || w.duration,
+            calories: plan.calories || w.calories,
+            intensity: plan.intensity || w.intensity,
+            updatedAt: new Date().toISOString(),
+            exercises: plan.exercises ? plan.exercises.map((ex, index) => ({
+              id: `temp-${index}`, // Temporary ID for new exercises
+              name: ex.name,
+              sets: ex.sets,
+              reps: ex.reps,
+              weight: ex.weight,
+              duration: ex.duration,
+              restTime: ex.restTime,
+              rest: ex.restTime ? `${ex.restTime}s` : '60s',
+              notes: ex.notes,
+              orderIndex: ex.orderIndex || index,
+              createdAt: new Date().toISOString() // Add createdAt for each exercise
+            })) : w.exercises
           };
+          
+          return updatedPlan;
         }
         return w;
       }));
