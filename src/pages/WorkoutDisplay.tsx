@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Clock, BarChart3, Dumbbell, ArrowLeft, CheckCircle2, Flame, Timer, User, Activity, Calendar, Camera, Settings, Trophy, BarChart2 } from "lucide-react";
@@ -14,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useIsMobile } from "../hooks/use-mobile";
 
 interface ProfileStats {
   totalWorkouts: number;
@@ -26,6 +28,7 @@ const WorkoutDisplay = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getWorkoutById, completeWorkout, workoutPlans } = useWorkout();
+  const isMobile = useIsMobile();
   
   const [workout, setWorkout] = useState<WorkoutPlan | null>(null);
   const [completed, setCompleted] = useState<boolean[]>([]);
@@ -136,8 +139,10 @@ const WorkoutDisplay = () => {
         ...workout,
         date: today,
         description: workout.description || 'Completed workout',
-        calories: workout.calories || 0, // Ensure calories is always provided
+        calories: workout.calories || 0,
         completedAt: new Date().toISOString(),
+        intensity: workout.intensity === 'beginner' ? 'Low' : 
+                  workout.intensity === 'intermediate' ? 'Medium' : 'High',
         totalWeight: workout.exercises.reduce(
           (sum: number, ex: WorkoutExercise) => sum + (ex.weight || 0),
           0
@@ -183,7 +188,7 @@ const WorkoutDisplay = () => {
         description: workout.description || 'Completed workout',
         type: workout.type,
         duration: timer,
-        calories: workout.calories || 0, // Ensure calories is always provided
+        calories: workout.calories || 0,
         intensity: workout.intensity === 'beginner' ? 'Low' : 
                   workout.intensity === 'intermediate' ? 'Medium' : 'High',
         exercises: workout.exercises.map(ex => ({
@@ -192,7 +197,7 @@ const WorkoutDisplay = () => {
           reps: ex.reps.toString(),
           weight: ex.weight?.toString() || '0',
           duration: ex.duration,
-          calories: 0, // We'll calculate this later
+          calories: 0,
           rest: ex.rest
         })),
         date: today,
@@ -254,30 +259,30 @@ const WorkoutDisplay = () => {
         Back
       </button>
       
-      <div className="flex flex-col md:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Left side - Workout details */}
-        <div className="w-full md:w-1/3">
-          <div className="glass-card p-6 sticky top-24">
-            <h1 className="text-2xl font-bold text-text-light mb-4">{workout.title}</h1>
-            <p className="text-text-muted mb-4">{workout.description}</p>
+        <div className="w-full lg:w-1/3">
+          <div className="glass-card p-4 md:p-6 sticky top-24">
+            <h1 className="text-xl md:text-2xl font-bold text-text-light mb-3">{workout.title}</h1>
+            <p className="text-sm md:text-base text-text-muted mb-4 line-clamp-3">{workout.description}</p>
             
-            <div className="flex flex-wrap gap-3 mb-6">
-              <Badge className="bg-primary/20 text-primary border-none px-3 py-1.5 flex items-center gap-1.5">
+            <div className="flex flex-wrap gap-2 md:gap-3 mb-4 md:mb-6">
+              <Badge className="bg-primary/20 text-primary border-none px-2 py-1 md:px-3 md:py-1.5 flex items-center gap-1.5 text-xs md:text-sm">
                 <Clock size={14} />
                 {workout.duration} min
               </Badge>
-              <Badge className="bg-primary/20 text-primary border-none px-3 py-1.5 flex items-center gap-1.5">
+              <Badge className="bg-primary/20 text-primary border-none px-2 py-1 md:px-3 md:py-1.5 flex items-center gap-1.5 text-xs md:text-sm">
                 <BarChart3 size={14} />
                 {workout.intensity}
               </Badge>
-              <Badge className="bg-primary/20 text-primary border-none px-3 py-1.5 flex items-center gap-1.5">
+              <Badge className="bg-primary/20 text-primary border-none px-2 py-1 md:px-3 md:py-1.5 flex items-center gap-1.5 text-xs md:text-sm">
                 <Dumbbell size={14} />
                 {workout.calories} cal
               </Badge>
             </div>
             
             <div className="space-y-3">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-xs md:text-sm">
                 <span className="text-text-muted">Progress</span>
                 <span className="text-text-light">
                   {completed.filter(Boolean).length}/{workout.exercises.length}
@@ -294,7 +299,7 @@ const WorkoutDisplay = () => {
             {isWorkoutComplete && (
               <button
                 onClick={handleCompleteWorkout}
-                className="btn-primary w-full mt-6 flex items-center justify-center gap-2"
+                className="btn-primary w-full mt-4 md:mt-6 flex items-center justify-center gap-2 text-sm md:text-base py-2 md:py-2.5"
               >
                 <CheckCircle2 size={18} />
                 Complete Workout
@@ -302,27 +307,29 @@ const WorkoutDisplay = () => {
             )}
             
             {/* Add the Workout Actions */}
-            <WorkoutActions />
+            <div className="mt-4">
+              <WorkoutActions />
+            </div>
           </div>
         </div>
         
         {/* Right side - Exercise list */}
-        <div className="w-full md:w-2/3">
-          <div className="glass-card p-6">
-            <h2 className="text-xl font-bold text-text-light mb-6">Exercises</h2>
+        <div className="w-full lg:w-2/3">
+          <div className="glass-card p-4 md:p-6">
+            <h2 className="text-lg md:text-xl font-bold text-text-light mb-4 md:mb-6">Exercises</h2>
             
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               {workout.exercises.map((exercise: WorkoutExercise, index: number) => (
                 <div
                   key={index}
-                  className={`border rounded-lg p-4 transition-colors ${
+                  className={`border rounded-lg p-3 md:p-4 transition-colors ${
                     completed[index]
                       ? "border-primary/30 bg-primary/5"
                       : "border-white/10 hover:border-white/20"
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-lg font-medium text-text-light">
+                  <div className="flex justify-between items-start mb-2 md:mb-3">
+                    <h3 className="text-base md:text-lg font-medium text-text-light">
                       {index + 1}. {exercise.name}
                     </h3>
                     <button
@@ -333,27 +340,29 @@ const WorkoutDisplay = () => {
                           : "text-text-muted bg-white/10 hover:bg-white/20"
                       }`}
                     >
-                      <CheckCircle2 size={20} />
+                      <CheckCircle2 size={18} />
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-3 text-sm">
-                    <div className="bg-white/5 p-3 rounded-lg">
+                  <div className="grid grid-cols-3 gap-2 md:gap-3 text-xs md:text-sm">
+                    <div className="bg-white/5 p-2 md:p-3 rounded-lg">
                       <div className="text-text-muted mb-1">Sets</div>
                       <div className="text-text-light font-medium">{exercise.sets}</div>
                     </div>
-                    <div className="bg-white/5 p-3 rounded-lg">
+                    <div className="bg-white/5 p-2 md:p-3 rounded-lg">
                       <div className="text-text-muted mb-1">Reps</div>
                       <div className="text-text-light font-medium">{exercise.reps}</div>
                     </div>
-                    <div className="bg-white/5 p-3 rounded-lg">
+                    <div className="bg-white/5 p-2 md:p-3 rounded-lg">
                       <div className="text-text-muted mb-1">Weight</div>
-                      <div className="text-text-light font-medium">{exercise.weight || 'Bodyweight'}</div>
+                      <div className="text-text-light font-medium text-sm md:text-base truncate">
+                        {exercise.weight || 'Bodyweight'}
+                      </div>
                     </div>
                   </div>
                   
                   {exercise.rest && (
-                    <div className="mt-3 text-sm text-text-muted">
+                    <div className="mt-2 md:mt-3 text-xs md:text-sm text-text-muted">
                       Rest: {exercise.rest}
                     </div>
                   )}
@@ -365,31 +374,31 @@ const WorkoutDisplay = () => {
       </div>
 
       {!isWorkoutInProgress ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Workout Overview</CardTitle>
+        <Card className="mt-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg md:text-xl">Workout Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground mb-4">{workout.description}</p>
-            <div className="space-y-4">
+            <p className="text-muted-foreground mb-4 text-sm md:text-base line-clamp-2">{workout.description}</p>
+            <div className="space-y-2 md:space-y-4 max-h-64 overflow-y-auto pr-1">
               {workout.exercises.map((exercise: WorkoutExercise) => (
                 <div
                   key={exercise.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
+                  className="flex items-center justify-between p-2 md:p-4 border rounded-lg"
                 >
-                  <div>
-                    <h3 className="font-medium">{exercise.name}</h3>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="overflow-hidden">
+                    <h3 className="font-medium text-sm md:text-base truncate">{exercise.name}</h3>
+                    <p className="text-xs md:text-sm text-muted-foreground truncate">
                       {exercise.sets} sets × {exercise.reps} reps
                       {exercise.weight && ` × ${exercise.weight}kg`}
                     </p>
                   </div>
-                  <Timer className="h-4 w-4 text-muted-foreground" />
+                  <Timer className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
                 </div>
               ))}
             </div>
             <Button
-              className="w-full mt-6"
+              className="w-full mt-4 md:mt-6"
               onClick={startWorkout}
             >
               Start Workout
@@ -397,34 +406,34 @@ const WorkoutDisplay = () => {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Exercise</CardTitle>
+        <Card className="mt-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg md:text-xl">Current Exercise</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-center space-y-6">
-              <h2 className="text-3xl font-bold">{currentExercise.name}</h2>
-              <div className="grid grid-cols-3 gap-4">
+            <div className="text-center space-y-4 md:space-y-6">
+              <h2 className="text-xl md:text-3xl font-bold">{currentExercise.name}</h2>
+              <div className="grid grid-cols-3 gap-2 md:gap-4">
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Sets</p>
-                  <p className="text-2xl font-bold">{currentExercise.sets}</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Sets</p>
+                  <p className="text-lg md:text-2xl font-bold">{currentExercise.sets}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Reps</p>
-                  <p className="text-2xl font-bold">{currentExercise.reps}</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Reps</p>
+                  <p className="text-lg md:text-2xl font-bold">{currentExercise.reps}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Weight</p>
-                  <p className="text-2xl font-bold">
-                    {currentExercise.weight || 'Bodyweight'}
+                  <p className="text-xs md:text-sm text-muted-foreground">Weight</p>
+                  <p className="text-lg md:text-2xl font-bold truncate">
+                    {currentExercise.weight || 'BW'}
                   </p>
                 </div>
               </div>
 
               {isResting ? (
-                <div className="space-y-4">
-                  <h3 className="text-xl font-semibold">Rest Time</h3>
-                  <p className="text-4xl font-bold">
+                <div className="space-y-2 md:space-y-4">
+                  <h3 className="text-lg md:text-xl font-semibold">Rest Time</h3>
+                  <p className="text-2xl md:text-4xl font-bold">
                     {Math.floor(restTimer / 60)}:
                     {(restTimer % 60).toString().padStart(2, '0')}
                   </p>
@@ -432,12 +441,16 @@ const WorkoutDisplay = () => {
                     variant="outline"
                     onClick={endRest}
                     disabled={restTimer > 0}
+                    className="px-3 py-1 md:px-4 md:py-2 text-sm md:text-base"
                   >
                     Skip Rest
                   </Button>
                 </div>
               ) : (
-                <Button onClick={startRest}>
+                <Button 
+                  onClick={startRest}
+                  className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base"
+                >
                   Start Rest
                 </Button>
               )}
