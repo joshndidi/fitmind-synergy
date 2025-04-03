@@ -62,19 +62,19 @@
   }
   
   .input-field {
-    @apply px-4 py-3 bg-black/40 rounded-lg border border-white/10 text-text-light focus:outline-none focus:border-primary transition-colors;
+    @apply px-3 py-2 sm:px-4 sm:py-3 bg-black/40 rounded-lg border border-white/10 text-text-light focus:outline-none focus:border-primary transition-colors;
   }
   
   .page-container {
-    @apply container mx-auto px-4 py-6 md:py-8 animate-fade-in;
+    @apply container mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8 animate-fade-in;
   }
   
   .section-title {
-    @apply text-2xl md:text-3xl font-bold mb-6 text-text-light;
+    @apply text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-text-light;
   }
   
   .subsection-title {
-    @apply text-xl font-semibold mb-4 text-text-light;
+    @apply text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-text-light;
   }
   
   .text-gradient {
@@ -82,7 +82,7 @@
   }
   
   .nav-link {
-    @apply flex items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:bg-white/10;
+    @apply flex items-center gap-2 px-2 sm:px-3 py-2 rounded-lg transition-colors hover:bg-white/10;
   }
   
   .nav-link.active {

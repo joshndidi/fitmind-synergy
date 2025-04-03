@@ -64,11 +64,11 @@ const AuthForm = ({ type }: AuthFormProps) => {
   };
 
   return (
-    <div className="glass-card w-full max-w-md p-8 mx-auto animate-fade-in">
-      <h2 className="text-2xl font-bold mb-6 text-center text-text-light">
+    <div className="glass-card w-full max-w-md p-4 sm:p-8 mx-auto animate-fade-in">
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-text-light">
         {type === "login" ? "Sign In" : "Create Account"}
       </h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-text-muted mb-1">
             Email
@@ -117,10 +117,10 @@ const AuthForm = ({ type }: AuthFormProps) => {
         </Button>
       </form>
       
-      <div className="mt-6">
-        <p className="text-text-muted text-sm mb-4">or</p>
+      <div className="mt-4 sm:mt-6">
+        <p className="text-text-muted text-sm mb-3 sm:mb-4">or</p>
         
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           <Button
             type="button"
             onClick={handleGoogleLogin}
@@ -129,7 +129,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
             className="w-full flex items-center justify-center gap-2"
           >
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4 sm:w-5 sm:h-5"
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
             >
@@ -158,9 +158,9 @@ const AuthForm = ({ type }: AuthFormProps) => {
               type="button"
               onClick={handleAdminLogin}
               variant="outline"
-              className="w-full flex items-center justify-center gap-2"
+              className="w-full flex items-center justify-center gap-2 text-xs sm:text-sm"
             >
-              <Shield size={18} />
+              <Shield size={16} />
               <span>Admin access (admin@admin.com / admin)</span>
             </Button>
           )}
