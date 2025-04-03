@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "../integrations/supabase/client";
@@ -132,8 +133,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         toast.success("Logged in successfully");
       }
     } catch (err: any) {
+      console.error("Login error:", err);
       setError(err.message);
-      toast.error(err.message);
+      toast.error(err.message || "Login failed");
+      throw err; // Re-throw to be caught in the component
     } finally {
       setLoading(false);
     }
@@ -158,8 +161,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("Google login initiated:", data);
       // Toast message will show after redirect back
     } catch (err: any) {
+      console.error("Google login error:", err);
       setError(err.message);
-      toast.error(err.message);
+      toast.error(err.message || "Google login failed");
+      throw err; // Re-throw to be caught in the component
+    } finally {
       setLoading(false);
     }
   };
@@ -202,7 +208,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (err: any) {
       console.error("Signup error:", err);
       setError(err.message);
-      toast.error(err.message);
+      toast.error(err.message || "Account creation failed");
+      throw err; // Re-throw to be caught in the component
     } finally {
       setLoading(false);
     }
@@ -223,7 +230,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast.success("Logged out successfully");
     } catch (err: any) {
       setError(err.message);
-      toast.error(err.message);
+      toast.error(err.message || "Logout failed");
     } finally {
       setLoading(false);
     }

@@ -23,28 +23,34 @@ const AuthForm = ({ type }: AuthFormProps) => {
     
     try {
       if (type === "login") {
+        toast.loading("Signing in...");
         await login(email, password);
       } else {
+        toast.loading("Creating account...");
         await signup(email, password);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Auth error:", error);
+      toast.error(error.message || "Authentication failed");
     }
   };
 
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Google login error:", error);
+      toast.error(error.message || "Google login failed");
     }
   };
 
   const handleAdminLogin = async () => {
     try {
+      toast.loading("Logging in as admin...");
       await login("admin@admin.com", "admin");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Admin login error:", error);
+      toast.error(error.message || "Admin login failed");
     }
   };
 
