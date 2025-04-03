@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
 
@@ -8,4 +9,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey); 
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+  }
+});

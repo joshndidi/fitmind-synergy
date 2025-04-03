@@ -47,14 +47,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     return {
       ...originalUser,
-      displayName: originalUser.user_metadata?.full_name || originalUser.email?.split('@')[0] || null,
+      displayName: originalUser.user_metadata?.full_name || originalUser.user_metadata?.name || originalUser.email?.split('@')[0] || null,
       photoURL: originalUser.user_metadata?.avatar_url || null,
       isAdmin: isAdmin
     };
   };
 
   useEffect(() => {
-    // Check for active session on initial load
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        console.log("Auth state changed:", _event, session);
+        setSession(session);
+        setUser(enhanceUser(session?.user ?? null));
+        setLoading(false);
+      }
+    );
+
+    // THEN check for existing session
     const getInitialSession = async () => {
       try {
         setLoading(true);
@@ -79,16 +89,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     getInitialSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        console.log("Auth state changed:", _event, session);
-        setSession(session);
-        setUser(enhanceUser(session?.user ?? null));
-        setLoading(false);
-      }
-    );
 
     // Cleanup subscription on unmount
     return () => subscription.unsubscribe();
@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -128,7 +128,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
       
-      toast.success("Logged in successfully");
+      if (data.user) {
+        toast.success("Logged in successfully");
+      }
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message);
@@ -142,10 +144,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/dashboard'
+          redirectTo: `${window.location.origin}/dashboard`
         }
       });
       
@@ -153,6 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
       
+      console.log("Google login initiated:", data);
       // Toast message will show after redirect back
     } catch (err: any) {
       setError(err.message);
@@ -166,15 +169,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       
-      // First create the user account
+      // Create the user account
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          // Set email confirmation to true so user can sign in immediately
-          emailRedirectTo: window.location.origin + '/dashboard',
+          emailRedirectTo: `${window.location.origin}/dashboard`,
           data: {
-            email_confirmed: true
+            full_name: email.split('@')[0]
           }
         }
       });
@@ -183,25 +185,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
       
-      // If user was created successfully, immediately sign them in
+      // If user was created successfully
       if (data.user) {
         console.log("User created successfully:", data.user);
         
-        // Sign in the user immediately after signup
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        
-        if (signInError) {
-          throw signInError;
-        }
-        
-        // Check if sign-in was successful
-        if (signInData.session) {
-          console.log("User signed in successfully:", signInData.session);
+        // Handle different sign-up statuses
+        if (data.session) {
+          // User is signed in automatically
+          console.log("User signed in automatically after signup:", data.session);
           toast.success("Account created and logged in successfully!");
         } else {
+          // Email confirmation may be required
           toast.success("Account created! Please check your email for confirmation.");
         }
       }
@@ -223,6 +217,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
       
+      // Clear user state after logout
+      setUser(null);
+      setSession(null);
       toast.success("Logged out successfully");
     } catch (err: any) {
       setError(err.message);
