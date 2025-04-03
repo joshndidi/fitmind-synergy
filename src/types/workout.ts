@@ -1,3 +1,4 @@
+
 export type Exercise = {
   name: string;
   sets: number;
@@ -5,6 +6,7 @@ export type Exercise = {
   weight: string;
   duration?: number;
   calories?: number;
+  rest?: string;
 };
 
 export type Workout = {
@@ -44,6 +46,7 @@ export interface WorkoutExercise {
   weight?: number;
   duration?: number;
   restTime?: number;
+  rest?: string;
   notes?: string;
   orderIndex: number;
   createdAt: string;
@@ -95,7 +98,7 @@ export interface CreateWorkoutPlanInput {
   duration: number;
   calories?: number;
   intensity: WorkoutIntensity;
-  isAiGenerated?: boolean;
+  isAiGenerated: boolean;
   isTemplate?: boolean;
   exercises: Omit<WorkoutExercise, 'id' | 'createdAt'>[];
 }

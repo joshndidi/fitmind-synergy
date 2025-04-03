@@ -1,6 +1,14 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Workout, WorkoutPlan, WorkoutExercise } from '@/types/workout';
+import { 
+  Workout, 
+  WorkoutPlan, 
+  WorkoutExercise, 
+  Exercise,
+  WorkoutType,
+  WorkoutIntensity 
+} from '@/types/workout';
 import { Database } from '@/types/supabase';
 
 type WorkoutPlanRow = Database['public']['Tables']['workout_plans']['Row'];
@@ -9,6 +17,7 @@ type CompletedWorkoutRow = Database['public']['Tables']['completed_workouts']['R
 export const useWorkout = () => {
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [completedWorkouts, setCompletedWorkouts] = useState<Workout[]>([]);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [totalWeightLifted, setTotalWeightLifted] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -45,14 +54,14 @@ export const useWorkout = () => {
           userId: plan.user_id,
           title: plan.title,
           description: plan.description || '',
-          type: plan.type,
+          type: plan.type as WorkoutType,
           duration: plan.duration,
           calories: plan.calories || 0,
-          intensity: plan.intensity,
+          intensity: plan.intensity as WorkoutIntensity,
           createdAt: plan.created_at,
           updatedAt: plan.updated_at,
           isAiGenerated: plan.is_ai_generated,
-          isTemplate: plan.is_template,
+          isTemplate: plan.is_template || false,
           exercises: exercises.map(exercise => ({
             id: exercise.id,
             name: exercise.name,
@@ -61,6 +70,7 @@ export const useWorkout = () => {
             weight: exercise.weight,
             duration: exercise.duration,
             restTime: exercise.rest_time,
+            rest: exercise.rest_time ? `${exercise.rest_time}s` : '60s',
             notes: exercise.notes,
             orderIndex: exercise.order_index,
             createdAt: exercise.created_at
@@ -69,10 +79,41 @@ export const useWorkout = () => {
       }));
 
       setWorkoutPlans(workoutPlansWithExercises);
+      
+      // Also convert to Workout format for compatibility
+      const convertedWorkouts = workoutPlansWithExercises.map(plan => ({
+        id: plan.id,
+        title: plan.title,
+        description: plan.description || '',
+        calories: plan.calories || 0,
+        duration: plan.duration,
+        intensity: mapIntensity(plan.intensity),
+        type: plan.type,
+        date: new Date().toISOString().split('T')[0],
+        exercises: plan.exercises.map(ex => ({
+          name: ex.name,
+          sets: ex.sets,
+          reps: ex.reps.toString(),
+          weight: ex.weight?.toString() || '0',
+          duration: ex.duration,
+          rest: ex.rest
+        })),
+      }));
+      
+      setWorkouts(convertedWorkouts);
     } catch (error) {
       console.error('Error fetching workout plans:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const mapIntensity = (intensity: WorkoutIntensity): "High" | "Medium" | "Low" => {
+    switch (intensity) {
+      case 'advanced': return 'High';
+      case 'intermediate': return 'Medium';
+      case 'beginner': return 'Low';
+      default: return 'Medium';
     }
   };
 
@@ -88,27 +129,30 @@ export const useWorkout = () => {
         .order('completed_at', { ascending: false });
 
       if (error) throw error;
-      setCompletedWorkouts(data.map(row => ({
+      
+      const convertedWorkouts = data.map(row => ({
         id: row.id,
         title: row.title,
-        description: row.description,
-        type: row.type,
+        description: row.description || '',
+        type: row.type as WorkoutType,
         duration: row.duration,
         calories: row.calories,
-        intensity: row.intensity as 'High' | 'Medium' | 'Low',
-        exercises: row.exercises.map((ex: any) => ({
-          name: ex.name,
-          sets: ex.sets,
-          reps: ex.reps.toString(),
-          weight: ex.weight?.toString() || '0',
-          rest: ex.rest?.toString() || '60',
+        intensity: row.intensity as "High" | "Medium" | "Low",
+        exercises: row.exercises ? (row.exercises as any[]).map((ex: any) => ({
+          name: ex.name || ex.exerciseName,
+          sets: ex.sets || ex.setsCompleted,
+          reps: (ex.reps || ex.repsCompleted).toString(),
+          weight: (ex.weight || ex.weightUsed || 0).toString(),
+          rest: ex.rest || '60s',
           duration: ex.duration,
           calories: ex.calories || 0
-        })),
+        })) : [],
         date: row.completed_at.split('T')[0],
         completedAt: row.completed_at,
         totalWeight: row.total_weight || 0
-      })));
+      }));
+      
+      setCompletedWorkouts(convertedWorkouts);
 
       // Calculate total weight lifted
       const total = data?.reduce((sum, workout) => {
@@ -146,14 +190,14 @@ export const useWorkout = () => {
         userId: plan.user_id,
         title: plan.title,
         description: plan.description || '',
-        type: plan.type,
+        type: plan.type as WorkoutType,
         duration: plan.duration,
         calories: plan.calories || 0,
-        intensity: plan.intensity,
+        intensity: plan.intensity as WorkoutIntensity,
         createdAt: plan.created_at,
         updatedAt: plan.updated_at,
         isAiGenerated: plan.is_ai_generated,
-        isTemplate: plan.is_template,
+        isTemplate: plan.is_template || false,
         exercises: exercises.map(exercise => ({
           id: exercise.id,
           name: exercise.name,
@@ -162,6 +206,7 @@ export const useWorkout = () => {
           weight: exercise.weight,
           duration: exercise.duration,
           restTime: exercise.rest_time,
+          rest: exercise.rest_time ? `${exercise.rest_time}s` : '60s',
           notes: exercise.notes,
           orderIndex: exercise.order_index,
           createdAt: exercise.created_at
@@ -173,7 +218,10 @@ export const useWorkout = () => {
     }
   };
 
-  const createWorkoutPlan = async (plan: Omit<WorkoutPlan, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => {
+  // Alias for compatibility with older code
+  const getWorkoutPlan = getWorkoutById;
+
+  const createWorkoutPlan = async (plan: CreateWorkoutPlanInput) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
@@ -189,27 +237,86 @@ export const useWorkout = () => {
           calories: plan.calories,
           intensity: plan.intensity,
           is_ai_generated: plan.isAiGenerated,
-          is_template: plan.isTemplate
+          is_template: plan.isTemplate || false
         }])
         .select()
         .single();
 
       if (error) throw error;
-      setWorkoutPlans(prev => [{
+      
+      if (plan.exercises && plan.exercises.length > 0) {
+        const exerciseData = plan.exercises.map((ex, index) => ({
+          workout_plan_id: data.id,
+          name: ex.name,
+          sets: ex.sets,
+          reps: ex.reps,
+          weight: ex.weight,
+          duration: ex.duration,
+          rest_time: ex.restTime,
+          notes: ex.notes,
+          order_index: ex.orderIndex || index
+        }));
+        
+        const { error: exerciseError } = await supabase
+          .from('workout_exercises')
+          .insert(exerciseData);
+          
+        if (exerciseError) throw exerciseError;
+      }
+      
+      // Add to workoutPlans state
+      const newPlan: WorkoutPlan = {
         id: data.id,
         userId: data.user_id,
         title: data.title,
         description: data.description || '',
-        type: data.type,
+        type: data.type as WorkoutType,
         duration: data.duration,
         calories: data.calories || 0,
-        intensity: data.intensity,
+        intensity: data.intensity as WorkoutIntensity,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         isAiGenerated: data.is_ai_generated,
-        isTemplate: data.is_template,
-        exercises: []
-      }, ...prev]);
+        isTemplate: data.is_template || false,
+        exercises: plan.exercises.map((ex, index) => ({
+          id: `temp-${index}`, // Temporary ID until we fetch the real ones
+          name: ex.name,
+          sets: ex.sets,
+          reps: ex.reps,
+          weight: ex.weight,
+          duration: ex.duration,
+          restTime: ex.restTime,
+          rest: ex.restTime ? `${ex.restTime}s` : '60s',
+          notes: ex.notes,
+          orderIndex: ex.orderIndex || index,
+          createdAt: new Date().toISOString()
+        }))
+      };
+      
+      setWorkoutPlans(prev => [newPlan, ...prev]);
+      
+      // Also add to workouts for compatibility
+      const newWorkout: Workout = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        calories: data.calories || 0,
+        duration: data.duration,
+        intensity: mapIntensity(data.intensity as WorkoutIntensity),
+        type: data.type as WorkoutType,
+        date: new Date().toISOString().split('T')[0],
+        exercises: plan.exercises.map(ex => ({
+          name: ex.name,
+          sets: ex.sets,
+          reps: ex.reps.toString(),
+          weight: ex.weight?.toString() || '0',
+          duration: ex.duration,
+          rest: ex.restTime ? `${ex.restTime}s` : '60s'
+        }))
+      };
+      
+      setWorkouts(prev => [newWorkout, ...prev]);
+      
       return data;
     } catch (error) {
       console.error('Error creating workout plan:', error);
@@ -217,7 +324,7 @@ export const useWorkout = () => {
     }
   };
 
-  const updateWorkoutPlan = async (id: string, plan: Partial<WorkoutPlan>) => {
+  const updateWorkoutPlan = async (id: string, plan: UpdateWorkoutPlanInput) => {
     try {
       const { data, error } = await supabase
         .from('workout_plans')
@@ -235,21 +342,73 @@ export const useWorkout = () => {
         .single();
 
       if (error) throw error;
-      setWorkoutPlans(prev => prev.map(w => w.id === id ? {
-        id: data.id,
-        userId: data.user_id,
-        title: data.title,
-        description: data.description || '',
-        type: data.type,
-        duration: data.duration,
-        calories: data.calories || 0,
-        intensity: data.intensity,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        isAiGenerated: data.is_ai_generated,
-        isTemplate: data.is_template,
-        exercises: []
-      } : w));
+      
+      // If exercises are included, update them
+      if (plan.exercises && plan.exercises.length > 0) {
+        // First delete existing exercises
+        const { error: deleteError } = await supabase
+          .from('workout_exercises')
+          .delete()
+          .eq('workout_plan_id', id);
+          
+        if (deleteError) throw deleteError;
+        
+        // Then add new ones
+        const exerciseData = plan.exercises.map((ex, index) => ({
+          workout_plan_id: id,
+          name: ex.name,
+          sets: ex.sets,
+          reps: ex.reps,
+          weight: ex.weight,
+          duration: ex.duration,
+          rest_time: ex.restTime,
+          notes: ex.notes,
+          order_index: ex.orderIndex || index
+        }));
+        
+        const { error: exerciseError } = await supabase
+          .from('workout_exercises')
+          .insert(exerciseData);
+          
+        if (exerciseError) throw exerciseError;
+      }
+      
+      // Update the state
+      setWorkoutPlans(prev => prev.map(w => {
+        if (w.id === id) {
+          return {
+            ...w,
+            ...plan,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return w;
+      }));
+      
+      // Also update workouts for compatibility
+      setWorkouts(prev => prev.map(w => {
+        if (w.id === id) {
+          return {
+            ...w,
+            title: plan.title || w.title,
+            description: plan.description || w.description,
+            type: plan.type || w.type,
+            duration: plan.duration || w.duration,
+            calories: plan.calories || w.calories,
+            intensity: plan.intensity ? mapIntensity(plan.intensity) : w.intensity,
+            exercises: plan.exercises ? plan.exercises.map(ex => ({
+              name: ex.name,
+              sets: ex.sets,
+              reps: ex.reps.toString(),
+              weight: ex.weight?.toString() || '0',
+              duration: ex.duration,
+              rest: ex.restTime ? `${ex.restTime}s` : '60s'
+            })) : w.exercises
+          };
+        }
+        return w;
+      }));
+      
       return data;
     } catch (error) {
       console.error('Error updating workout plan:', error);
@@ -265,7 +424,9 @@ export const useWorkout = () => {
         .eq('id', id);
 
       if (error) throw error;
+      
       setWorkoutPlans(prev => prev.filter(w => w.id !== id));
+      setWorkouts(prev => prev.filter(w => w.id !== id));
     } catch (error) {
       console.error('Error deleting workout plan:', error);
       throw error;
@@ -295,30 +456,35 @@ export const useWorkout = () => {
         .single();
 
       if (error) throw error;
-      setCompletedWorkouts(prev => [{
+      
+      const newCompletedWorkout: Workout = {
         id: data.id,
         title: data.title,
         description: data.description,
-        type: data.type,
+        type: data.type as WorkoutType,
         duration: data.duration,
         calories: data.calories,
-        intensity: data.intensity as 'High' | 'Medium' | 'Low',
+        intensity: data.intensity as "High" | "Medium" | "Low",
         exercises: data.exercises.map((ex: any) => ({
           name: ex.name,
           sets: ex.sets,
           reps: ex.reps.toString(),
           weight: ex.weight?.toString() || '0',
-          rest: ex.rest?.toString() || '60',
+          rest: ex.rest?.toString() || '60s',
           duration: ex.duration,
           calories: ex.calories || 0
         })),
         date: data.completed_at.split('T')[0],
         completedAt: data.completed_at,
         totalWeight: data.total_weight || 0
-      }, ...prev]);
+      };
+      
+      setCompletedWorkouts(prev => [newCompletedWorkout, ...prev]);
 
       // Update total weight lifted
       setTotalWeightLifted(prev => prev + (workout.totalWeight || 0));
+      
+      return data;
     } catch (error) {
       console.error('Error completing workout:', error);
       throw error;
@@ -347,21 +513,41 @@ export const useWorkout = () => {
         .single();
 
       if (error) throw error;
-      setWorkoutPlans(prev => [{
+      
+      // Add to workoutPlans state
+      const newPlan: WorkoutPlan = {
         id: data.id,
         userId: data.user_id,
         title: data.title,
         description: data.description || '',
-        type: data.type,
+        type: data.type as WorkoutType,
         duration: data.duration,
         calories: data.calories || 0,
-        intensity: data.intensity,
+        intensity: data.intensity as WorkoutIntensity,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         isAiGenerated: data.is_ai_generated,
         isTemplate: data.is_template,
         exercises: []
-      }, ...prev]);
+      };
+      
+      setWorkoutPlans(prev => [newPlan, ...prev]);
+      
+      // Also add to workouts for compatibility
+      const newWorkout: Workout = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        calories: data.calories || 0,
+        duration: data.duration,
+        intensity: mapIntensity(data.intensity as WorkoutIntensity),
+        type: data.type as WorkoutType,
+        date: new Date().toISOString().split('T')[0],
+        exercises: []
+      };
+      
+      setWorkouts(prev => [newWorkout, ...prev]);
+      
       return data;
     } catch (error) {
       console.error('Error saving AI workout plan:', error);
@@ -406,7 +592,8 @@ export const useWorkout = () => {
         .single();
 
       if (error) throw error;
-      setCompletedWorkouts(prev => [{
+      
+      const newCompletedWorkout: Workout = {
         id: data.id,
         title: data.title,
         description: data.description,
@@ -418,8 +605,11 @@ export const useWorkout = () => {
         date: data.completed_at.split('T')[0],
         completedAt: data.completed_at,
         totalWeight: data.total_weight || 0
-      }, ...prev]);
+      };
+      
+      setCompletedWorkouts(prev => [newCompletedWorkout, ...prev]);
       setTotalWeightLifted(prev => prev + (workout.totalWeight || 0));
+      
       return data;
     } catch (error) {
       console.error('Error logging custom workout:', error);
@@ -430,28 +620,52 @@ export const useWorkout = () => {
   const getAchievements = () => {
     const achievements = [
       {
-        id: 'first-workout',
-        title: 'First Workout',
-        description: 'Complete your first workout',
-        icon: '🏋️',
-        completed: completedWorkouts.length > 0
+        id: 'beginner',
+        name: "Beginner Lifter", 
+        description: "Lift your first 5,000 kg total",
+        threshold: 5000, 
+        icon: "🏋️‍♂️", 
+        achieved: totalWeightLifted >= 5000,
+        progress: Math.min(1, totalWeightLifted / 5000)
       },
       {
-        id: 'weight-milestone',
-        title: 'Weight Milestone',
-        description: 'Lift 1000kg in total',
-        icon: '💪',
-        completed: totalWeightLifted >= 1000
+        id: 'intermediate',
+        name: "Intermediate Lifter", 
+        description: "Lift 25,000 kg total",
+        threshold: 25000, 
+        icon: "💪", 
+        achieved: totalWeightLifted >= 25000,
+        progress: Math.min(1, totalWeightLifted / 25000)
       },
       {
-        id: 'streak',
-        title: 'Workout Streak',
-        description: 'Complete workouts for 7 days straight',
-        icon: '🔥',
-        completed: false // TODO: Implement streak tracking
+        id: 'advanced',
+        name: "Advanced Lifter", 
+        description: "Lift 100,000 kg total",
+        threshold: 100000, 
+        icon: "🔥", 
+        achieved: totalWeightLifted >= 100000,
+        progress: Math.min(1, totalWeightLifted / 100000)
+      },
+      {
+        id: 'elite',
+        name: "Elite Lifter", 
+        description: "Lift 500,000 kg total",
+        threshold: 500000, 
+        icon: "⭐", 
+        achieved: totalWeightLifted >= 500000,
+        progress: Math.min(1, totalWeightLifted / 500000)
+      },
+      {
+        id: 'legendary',
+        name: "Legendary Lifter", 
+        description: "Lift 1,000,000 kg total",
+        threshold: 1000000, 
+        icon: "🏆", 
+        achieved: totalWeightLifted >= 1000000,
+        progress: Math.min(1, totalWeightLifted / 1000000)
       }
     ];
-
+    
     return achievements;
   };
 
@@ -482,18 +696,22 @@ export const useWorkout = () => {
         if (plan.id === workoutPlanId) {
           return {
             ...plan,
-            exercises: data.map(row => ({
-              id: row.id,
-              name: row.name,
-              sets: row.sets,
-              reps: row.reps,
-              weight: row.weight,
-              duration: row.duration,
-              restTime: row.rest_time,
-              notes: row.notes,
-              orderIndex: row.order_index,
-              createdAt: row.created_at
-            }))
+            exercises: [
+              ...plan.exercises,
+              ...data.map(row => ({
+                id: row.id,
+                name: row.name,
+                sets: row.sets,
+                reps: row.reps,
+                weight: row.weight,
+                duration: row.duration,
+                restTime: row.rest_time,
+                rest: row.rest_time ? `${row.rest_time}s` : '60s',
+                notes: row.notes,
+                orderIndex: row.order_index,
+                createdAt: row.created_at
+              }))
+            ]
           };
         }
         return plan;
@@ -505,13 +723,22 @@ export const useWorkout = () => {
       throw error;
     }
   };
+  
+  // Get logged workouts for calendar
+  const getLoggedWorkouts = () => {
+    return completedWorkouts.map(workout => ({
+      ...workout
+    }));
+  };
 
   return {
     workoutPlans,
     completedWorkouts,
+    workouts, // For compatibility with old code
     totalWeightLifted,
     loading,
     getWorkoutById,
+    getWorkoutPlan, // Alias for compatibility
     createWorkoutPlan,
     updateWorkoutPlan,
     deleteWorkoutPlan,
@@ -519,6 +746,9 @@ export const useWorkout = () => {
     saveAIWorkoutPlan,
     logCustomWorkout,
     getAchievements,
-    addExercisesToWorkoutPlan
+    addExercisesToWorkoutPlan,
+    loggedWorkouts: getLoggedWorkouts() // For compatibility with WorkoutCalendar
   };
-}; 
+};
+
+export type { Workout, WorkoutPlan, WorkoutExercise } from "@/types/workout";
