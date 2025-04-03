@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Clock, BarChart3, Dumbbell, ArrowLeft, CheckCircle2, Flame, Timer, User, Activity, Calendar, Camera, Settings, Trophy, BarChart2 } from "lucide-react";
@@ -135,8 +134,9 @@ const WorkoutDisplay = () => {
       const today = new Date().toISOString().split('T')[0];
       completeWorkout({
         ...workout,
-        date: today, // Add the required 'date' property
-        description: workout.description || 'Completed workout', // Ensure description is always provided
+        date: today,
+        description: workout.description || 'Completed workout',
+        calories: workout.calories || 0, // Ensure calories is always provided
         completedAt: new Date().toISOString(),
         totalWeight: workout.exercises.reduce(
           (sum: number, ex: WorkoutExercise) => sum + (ex.weight || 0),
@@ -180,10 +180,10 @@ const WorkoutDisplay = () => {
       const completedWorkout: Workout = {
         id: workout.id,
         title: workout.title,
-        description: workout.description || 'Completed workout', // Ensure description is always provided
+        description: workout.description || 'Completed workout',
         type: workout.type,
         duration: timer,
-        calories: workout.calories || 0,
+        calories: workout.calories || 0, // Ensure calories is always provided
         intensity: workout.intensity === 'beginner' ? 'Low' : 
                   workout.intensity === 'intermediate' ? 'Medium' : 'High',
         exercises: workout.exercises.map(ex => ({
