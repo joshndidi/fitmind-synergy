@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Clock, BarChart3, Dumbbell, ArrowLeft, CheckCircle2, Flame, Timer, User, Activity, Calendar, Camera, Settings, Trophy, BarChart2 } from "lucide-react";
@@ -131,8 +132,10 @@ const WorkoutDisplay = () => {
 
   const handleCompleteWorkout = () => {
     if (workout) {
+      const today = new Date().toISOString().split('T')[0];
       completeWorkout({
         ...workout,
+        date: today, // Add the required 'date' property
         completedAt: new Date().toISOString(),
         totalWeight: workout.exercises.reduce(
           (sum: number, ex: WorkoutExercise) => sum + (ex.weight || 0),
