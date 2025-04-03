@@ -25,7 +25,7 @@ interface ProfileStats {
 const WorkoutDisplay = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getWorkoutById, completeWorkout, workouts } = useWorkout();
+  const { getWorkoutById, completeWorkout, workoutPlans } = useWorkout();
   
   const [workout, setWorkout] = useState<WorkoutPlan | null>(null);
   const [completed, setCompleted] = useState<boolean[]>([]);
@@ -42,7 +42,7 @@ const WorkoutDisplay = () => {
     const loadWorkout = async () => {
       setLoading(true);
       
-      if (workouts.length === 0) {
+      if (workoutPlans.length === 0) {
         // No workouts available at all
         navigate("/dashboard");
         toast.error("No workouts available. Create one in Workout AI.");
@@ -59,7 +59,7 @@ const WorkoutDisplay = () => {
       
       // If no ID provided or workout not found, use the first one
       if (!targetWorkout) {
-        targetWorkout = workouts[0];
+        targetWorkout = workoutPlans[0];
         if (id) {
           toast.info("Requested workout not found, showing first available workout");
         }
@@ -92,7 +92,7 @@ const WorkoutDisplay = () => {
     }, 100);
     
     return () => clearTimeout(timer);
-  }, [id, navigate, getWorkoutById, workouts]);
+  }, [id, navigate, getWorkoutById, workoutPlans]);
 
   // Save progress when completed state changes
   useEffect(() => {
@@ -188,7 +188,8 @@ const WorkoutDisplay = () => {
           reps: ex.reps.toString(),
           weight: ex.weight?.toString() || '0',
           duration: ex.duration,
-          calories: 0 // We'll calculate this later
+          calories: 0, // We'll calculate this later
+          rest: ex.rest
         })),
         date: today,
         completedAt: new Date().toISOString(),

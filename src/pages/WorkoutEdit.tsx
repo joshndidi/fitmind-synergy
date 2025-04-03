@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 export default function WorkoutEdit() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { getWorkoutPlan, updateWorkoutPlan } = useWorkout();
+  const { getWorkoutById, updateWorkoutPlan } = useWorkout();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -31,18 +31,18 @@ export default function WorkoutEdit() {
   useEffect(() => {
     const loadWorkoutPlan = async () => {
       try {
-        const plan = await getWorkoutPlan(id!);
+        const plan = await getWorkoutById(id!);
         if (plan) {
           setFormData({
-            name: plan.name,
-            description: plan.description,
+            name: plan.title,
+            description: plan.description || '',
             duration: plan.duration.toString(),
-            difficulty: plan.difficulty,
+            difficulty: plan.intensity,
             exercises: plan.exercises.map((exercise) => ({
               name: exercise.name,
               sets: exercise.sets.toString(),
               reps: exercise.reps.toString(),
-              weight: exercise.weight.toString(),
+              weight: exercise.weight?.toString() || '',
               notes: exercise.notes || ''
             }))
           });
@@ -54,7 +54,7 @@ export default function WorkoutEdit() {
     };
 
     loadWorkoutPlan();
-  }, [id, getWorkoutPlan, navigate]);
+  }, [id, getWorkoutById, navigate]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -273,4 +273,4 @@ export default function WorkoutEdit() {
       </form>
     </div>
   );
-} 
+}

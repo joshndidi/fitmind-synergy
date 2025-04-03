@@ -7,6 +7,7 @@ export type Exercise = {
   duration?: number;
   calories?: number;
   rest?: string;
+  restTime?: number; // Added to match WorkoutExercise
 };
 
 export type Workout = {
@@ -66,6 +67,8 @@ export interface WorkoutPlan {
   isAiGenerated: boolean;
   isTemplate: boolean;
   exercises: WorkoutExercise[];
+  name?: string; // Adding for WorkoutEdit compatibility
+  difficulty?: string; // Adding for WorkoutEdit compatibility
 }
 
 export interface WorkoutLogExercise {

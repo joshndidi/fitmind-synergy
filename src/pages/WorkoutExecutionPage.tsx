@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { WorkoutExecution } from "@/components/WorkoutExecution";
 import { useToast } from "@/components/ui/use-toast";
 
-interface Exercise {
+// Define local types to avoid conflicts with imported types
+interface ExecutionExercise {
   id: string;
   name: string;
   sets: number;
@@ -13,13 +15,13 @@ interface Exercise {
   notes?: string;
 }
 
-interface WorkoutPlan {
+interface ExecutionWorkoutPlan {
   id: string;
   name: string;
   description: string;
   difficulty: "beginner" | "intermediate" | "advanced";
   duration: number;
-  exercises: Exercise[];
+  exercises: ExecutionExercise[];
   createdAt: string;
   updatedAt: string;
 }
@@ -28,12 +30,12 @@ export function WorkoutExecutionPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [workoutPlan, setWorkoutPlan] = useState<WorkoutPlan | null>(null);
+  const [workoutPlan, setWorkoutPlan] = useState<ExecutionWorkoutPlan | null>(null);
 
   // In a real application, you would fetch the workout plan from your backend
   // For now, we'll use a mock workout plan
   useEffect(() => {
-    const mockPlan: WorkoutPlan = {
+    const mockPlan: ExecutionWorkoutPlan = {
       id: "1",
       name: "Full Body Strength",
       description: "A comprehensive full body workout for building strength",

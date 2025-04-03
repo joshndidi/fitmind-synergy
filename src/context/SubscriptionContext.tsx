@@ -9,8 +9,10 @@ export type SubscriptionContextType = {
   subscribe: () => Promise<void>;
   cancel: () => Promise<void>;
   loading: boolean;
+  isLoading: boolean; // Added for ProtectedRoute
   status: string | null;
   expiryDate: Date | null;
+  checkSubscription: () => Promise<void>; // Added for success page
 };
 
 const SubscriptionContext = createContext<SubscriptionContextType>({
@@ -18,8 +20,10 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   subscribe: async () => {},
   cancel: async () => {},
   loading: false,
+  isLoading: false, // Added
   status: null,
   expiryDate: null,
+  checkSubscription: async () => {}, // Added
 });
 
 export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
@@ -150,8 +154,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         subscribe,
         cancel,
         loading,
+        isLoading: loading, // Alias for compatibility
         status,
         expiryDate,
+        checkSubscription, // Added for success page
       }}
     >
       {children}

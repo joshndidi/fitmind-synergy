@@ -14,7 +14,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { WorkoutPlan } from "@/types/workout";
+import { WorkoutPlan, WorkoutIntensity } from "@/types/workout";
+
+// Helper function to map WorkoutIntensity to display intensity
+const mapIntensityToDisplay = (intensity: WorkoutIntensity): "High" | "Medium" | "Low" => {
+  switch (intensity) {
+    case 'advanced': return 'High';
+    case 'intermediate': return 'Medium';
+    case 'beginner': return 'Low';
+    default: return 'Medium';
+  }
+};
 
 const WorkoutSelection = () => {
   const navigate = useNavigate();
@@ -148,7 +158,7 @@ const WorkoutSelection = () => {
                   duration={workout.duration}
                   calories={workout.calories}
                   date={workout.createdAt}
-                  intensity={workout.intensity}
+                  intensity={mapIntensityToDisplay(workout.intensity)}
                   onClick={() => handleSelectWorkout(workout.id)}
                 />
                 <div className="mt-2">
@@ -204,7 +214,7 @@ const WorkoutSelection = () => {
                   duration={workout.duration}
                   calories={workout.calories}
                   date={workout.createdAt}
-                  intensity={workout.intensity}
+                  intensity={mapIntensityToDisplay(workout.intensity)}
                   onClick={() => handleSelectWorkout(workout.id)}
                 />
                 <div className="mt-2">
