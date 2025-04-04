@@ -11,6 +11,10 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  login: (email: string, password: string) => Promise<{ error: any }>;
+  signup: (email: string, password: string) => Promise<{ error: any }>;
+  logout: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,6 +23,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Set up the auth state listener FIRST
@@ -63,10 +68,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    navigate('/');
+  };
+
+  // Alias functions to maintain backward compatibility
+  const login = signIn;
+  const signup = signUp;
+  const logout = signOut;
+
+  const loginWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`
+      }
+    });
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      signIn, 
+      signUp, 
+      signOut,
+      login,
+      signup,
+      logout,
+      loginWithGoogle 
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -79,3 +110,9 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// Type for extended user with profile data
+export interface ExtendedUser extends User {
+  isAdmin?: boolean;
+  displayName?: string;
+}

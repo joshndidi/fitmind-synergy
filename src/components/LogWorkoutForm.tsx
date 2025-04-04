@@ -1,153 +1,135 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import { CalendarIcon, Plus, Minus } from 'lucide-react';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-
-interface LogExercise {
-  name: string;
-  setsCompleted: number;
-  repsCompleted: number;
-  weightUsed?: number;
-  durationCompleted?: number;
-}
-
-interface WorkoutPlanOption {
-  id: string;
-  title: string;
-  exercises: {
-    name: string;
-    sets: number;
-    reps: number;
-    weight?: number;
-    duration?: number;
-  }[];
-}
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { CalendarIcon, Plus, Minus } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
+import { WorkoutPlan, WorkoutType } from '@/types/workout';
 
 interface LogWorkoutFormProps {
-  onSuccess?: () => void;
+  onSuccess: () => void;
+}
+
+interface LoggedExercise {
+  name: string;
+  sets: number;
+  reps: number;
+  weight: number | null;
 }
 
 export default function LogWorkoutForm({ onSuccess }: LogWorkoutFormProps) {
   const { user } = useAuth();
   const [date, setDate] = useState<Date>(new Date());
-  const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlanOption[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-  const [duration, setDuration] = useState<number>(0);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [type, setType] = useState<WorkoutType>('strength');
+  const [duration, setDuration] = useState(45);
   const [caloriesBurned, setCaloriesBurned] = useState<number | null>(null);
-  const [notes, setNotes] = useState<string>('');
-  const [exercises, setExercises] = useState<LogExercise[]>([{
-    name: '',
-    setsCompleted: 3,
-    repsCompleted: 10,
-    weightUsed: undefined,
-    durationCompleted: undefined
-  }]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+  const [exercises, setExercises] = useState<LoggedExercise[]>([
+    { name: '', sets: 3, reps: 10, weight: null }
+  ]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savedWorkouts, setSavedWorkouts] = useState<WorkoutPlan[]>([]);
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
 
+  // Fetch user's saved workouts
   useEffect(() => {
     if (user) {
-      fetchWorkoutPlans();
+      fetchSavedWorkouts();
     }
   }, [user]);
 
-  const fetchWorkoutPlans = async () => {
+  const fetchSavedWorkouts = async () => {
     try {
-      setIsLoadingPlans(true);
-      // Fetch user's workout plans
-      const { data: plans, error } = await supabase
+      const { data, error } = await supabase
         .from('workout_plans')
-        .select(`
-          id,
-          title,
-          workout_exercises (
-            name,
-            sets,
-            reps,
-            weight,
-            duration
-          )
-        `)
-        .eq('user_id', user?.id);
+        .select('id, title, description, type, duration, intensity')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      const formattedPlans = plans.map((plan: any) => ({
-        id: plan.id,
-        title: plan.title,
-        exercises: plan.workout_exercises.map((ex: any) => ({
-          name: ex.name,
-          sets: ex.sets,
-          reps: ex.reps,
-          weight: ex.weight,
-          duration: ex.duration
-        }))
-      }));
-
-      setWorkoutPlans(formattedPlans);
+      setSavedWorkouts(data || []);
     } catch (error) {
-      console.error('Error fetching workout plans:', error);
-      toast.error('Failed to load workout plans');
-    } finally {
-      setIsLoadingPlans(false);
+      console.error('Error fetching saved workouts:', error);
     }
   };
 
-  const handlePlanChange = (planId: string) => {
-    setSelectedPlanId(planId);
-    
-    if (planId) {
-      const plan = workoutPlans.find(p => p.id === planId);
-      if (plan) {
-        // Pre-fill exercises from the selected plan
-        const planExercises = plan.exercises.map(ex => ({
-          name: ex.name,
-          setsCompleted: ex.sets,
-          repsCompleted: ex.reps,
-          weightUsed: ex.weight,
-          durationCompleted: ex.duration
-        }));
-        
-        setExercises(planExercises);
-      }
-    }
+  const handleAddExercise = () => {
+    setExercises([...exercises, { name: '', sets: 3, reps: 10, weight: null }]);
   };
 
-  const addExercise = () => {
-    setExercises([...exercises, {
-      name: '',
-      setsCompleted: 3,
-      repsCompleted: 10,
-      weightUsed: undefined,
-      durationCompleted: undefined
-    }]);
-  };
-
-  const removeExercise = (index: number) => {
+  const handleRemoveExercise = (index: number) => {
     if (exercises.length === 1) {
       toast.error('Workout must have at least one exercise');
       return;
     }
-    
-    const updatedExercises = exercises.filter((_, i) => i !== index);
-    setExercises(updatedExercises);
+    setExercises(exercises.filter((_, i) => i !== index));
   };
 
-  const handleExerciseChange = (index: number, field: keyof LogExercise, value: any) => {
+  const handleExerciseChange = (index: number, field: keyof LoggedExercise, value: any) => {
     const updatedExercises = [...exercises];
     updatedExercises[index] = { ...updatedExercises[index], [field]: value };
     setExercises(updatedExercises);
+  };
+
+  const handleSelectWorkout = async (workoutId: string) => {
+    setSelectedWorkoutId(workoutId);
+    
+    try {
+      // Fetch workout details
+      const { data: workoutData, error: workoutError } = await supabase
+        .from('workout_plans')
+        .select('*')
+        .eq('id', workoutId)
+        .single();
+        
+      if (workoutError) throw workoutError;
+      
+      // Fetch exercises for this workout
+      const { data: exercisesData, error: exercisesError } = await supabase
+        .from('workout_exercises')
+        .select('*')
+        .eq('workout_plan_id', workoutId)
+        .order('order_index', { ascending: true });
+        
+      if (exercisesError) throw exercisesError;
+      
+      // Set form data from fetched workout
+      setTitle(workoutData.title);
+      setDescription(workoutData.description || '');
+      setType(workoutData.type as WorkoutType);
+      setDuration(workoutData.duration);
+      setCaloriesBurned(workoutData.calories);
+      
+      // Map exercises
+      if (exercisesData && exercisesData.length > 0) {
+        setExercises(
+          exercisesData.map(ex => ({
+            name: ex.name,
+            sets: ex.sets,
+            reps: ex.reps,
+            weight: ex.weight
+          }))
+        );
+      }
+      
+    } catch (error) {
+      console.error('Error loading workout details:', error);
+      toast.error('Failed to load workout details');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,140 +140,143 @@ export default function LogWorkoutForm({ onSuccess }: LogWorkoutFormProps) {
       return;
     }
     
-    if (exercises.some(ex => !ex.name.trim())) {
+    if (!title) {
+      toast.error('Workout title is required');
+      return;
+    }
+    
+    if (exercises.some(ex => !ex.name)) {
       toast.error('All exercises must have a name');
       return;
     }
     
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
       
-      const totalWeight = exercises.reduce((sum, ex) => sum + (ex.weightUsed || 0) * ex.setsCompleted * ex.repsCompleted, 0);
+      // Calculate total weight lifted
+      const totalWeight = exercises.reduce((total, ex) => {
+        return total + (ex.weight || 0) * ex.sets * ex.reps;
+      }, 0);
       
-      // Format exercises for storage
-      const formattedExercises = exercises.map(ex => ({
-        exerciseName: ex.name,
-        setsCompleted: ex.setsCompleted,
-        repsCompleted: ex.repsCompleted,
-        weightUsed: ex.weightUsed || 0,
-        durationCompleted: ex.durationCompleted || 0
+      // Prepare exercise data
+      const exercisesData = exercises.map(ex => ({
+        name: ex.name,
+        sets_completed: ex.sets,
+        reps_completed: ex.reps,
+        weight_used: ex.weight || 0
       }));
       
-      // Insert the workout log
+      // Insert workout log
       const { error } = await supabase
-        .from('completed_workouts')
+        .from('workout_logs')
         .insert({
           user_id: user.id,
-          workout_plan_id: selectedPlanId || null,
-          title: selectedPlanId 
-            ? workoutPlans.find(p => p.id === selectedPlanId)?.title || 'Workout' 
-            : 'Custom Workout',
-          duration: duration,
-          calories: caloriesBurned || 0,
-          exercises: formattedExercises,
+          title: title,
+          exercises: exercisesData,
           completed_at: date.toISOString(),
-          total_weight: totalWeight
+          total_weight: totalWeight,
+          calories: caloriesBurned
         });
         
       if (error) throw error;
       
       toast.success('Workout logged successfully');
+      onSuccess();
       
-      // Reset form
-      setDate(new Date());
-      setSelectedPlanId('');
-      setDuration(0);
-      setCaloriesBurned(null);
-      setNotes('');
-      setExercises([{
-        name: '',
-        setsCompleted: 3,
-        repsCompleted: 10,
-        weightUsed: undefined,
-        durationCompleted: undefined
-      }]);
-      
-      if (onSuccess) {
-        onSuccess();
-      }
     } catch (error) {
       console.error('Error logging workout:', error);
       toast.error('Failed to log workout');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex-1 min-w-[200px]">
             <Label htmlFor="date">Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : "Select date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(date) => date && setDate(date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <div className="relative flex items-center mt-1">
+              <Input
+                id="date"
+                type="text"
+                value={format(date, 'PPP')}
+                readOnly
+                className="pr-10"
+              />
+              <CalendarIcon className="absolute right-3 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
+            <div className="mt-2">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(date) => date && setDate(date)}
+                className="border rounded-md p-3"
+              />
+            </div>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="workoutPlan">Workout Plan (Optional)</Label>
-            <Select 
-              value={selectedPlanId} 
-              onValueChange={handlePlanChange}
-            >
-              <SelectTrigger id="workoutPlan">
-                <SelectValue placeholder="Select a workout plan" />
+          <div className="flex-1 min-w-[200px]">
+            <Label htmlFor="savedWorkout">Use Saved Workout (Optional)</Label>
+            <Select onValueChange={handleSelectWorkout}>
+              <SelectTrigger id="savedWorkout">
+                <SelectValue placeholder="Select a saved workout" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Custom Workout</SelectItem>
-                {isLoadingPlans ? (
-                  <SelectItem value="" disabled>Loading plans...</SelectItem>
-                ) : (
-                  workoutPlans.map(plan => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.title}
-                    </SelectItem>
-                  ))
-                )}
+                {savedWorkouts.map(workout => (
+                  <SelectItem key={workout.id} value={workout.id}>
+                    {workout.title}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="duration">Duration (minutes)</Label>
+          <div>
+            <Label htmlFor="title">Workout Title</Label>
             <Input
-              id="duration"
-              type="number"
-              value={duration || ''}
-              onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
-              min={1}
-              placeholder="How long was your workout?"
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Morning Strength Training"
               required
             />
           </div>
           
-          <div className="space-y-2">
+          <div>
+            <Label htmlFor="type">Workout Type</Label>
+            <Select value={type} onValueChange={(value) => setType(value as WorkoutType)}>
+              <SelectTrigger id="type">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="strength">Strength</SelectItem>
+                <SelectItem value="cardio">Cardio</SelectItem>
+                <SelectItem value="flexibility">Flexibility</SelectItem>
+                <SelectItem value="hiit">HIIT</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="duration">Duration (minutes)</Label>
+            <Input
+              id="duration"
+              type="number"
+              value={duration}
+              onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
+              min={1}
+              required
+            />
+          </div>
+          
+          <div>
             <Label htmlFor="calories">Calories Burned (optional)</Label>
             <Input
               id="calories"
@@ -299,18 +284,18 @@ export default function LogWorkoutForm({ onSuccess }: LogWorkoutFormProps) {
               value={caloriesBurned || ''}
               onChange={(e) => setCaloriesBurned(e.target.value ? parseInt(e.target.value) : null)}
               min={0}
-              placeholder="Estimated calories burned"
+              placeholder="Optional"
             />
           </div>
         </div>
         
-        <div className="space-y-2">
-          <Label htmlFor="notes">Notes (optional)</Label>
+        <div>
+          <Label htmlFor="description">Notes (optional)</Label>
           <Textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="How was your workout? Any achievements or challenges?"
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="How did the workout feel? Any achievements or difficulties?"
             className="min-h-[100px]"
           />
         </div>
@@ -318,35 +303,28 @@ export default function LogWorkoutForm({ onSuccess }: LogWorkoutFormProps) {
       
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium">Exercises</h3>
-          <Button 
-            type="button" 
-            size="sm" 
-            onClick={addExercise}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Add Exercise
+          <h3 className="text-lg font-semibold">Exercises</h3>
+          <Button type="button" variant="outline" size="sm" onClick={handleAddExercise}>
+            <Plus className="h-4 w-4 mr-1" /> Add Exercise
           </Button>
         </div>
         
-        <div className="space-y-4">
-          {exercises.map((exercise, index) => (
-            <div 
-              key={index} 
-              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Exercise {index + 1}</h4>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => removeExercise(index)}
-                >
-                  <Minus className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
-              
-              <div className="space-y-2">
+        {exercises.map((exercise, index) => (
+          <div key={index} className="p-4 border rounded-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Exercise {index + 1}</h4>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => handleRemoveExercise(index)}
+              >
+                <Minus className="h-4 w-4 text-red-500" />
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2">
                 <Label htmlFor={`exercise-${index}-name`}>Exercise Name</Label>
                 <Input
                   id={`exercise-${index}-name`}
@@ -357,63 +335,49 @@ export default function LogWorkoutForm({ onSuccess }: LogWorkoutFormProps) {
                 />
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor={`exercise-${index}-sets`}>Sets Completed</Label>
-                  <Input
-                    id={`exercise-${index}-sets`}
-                    type="number"
-                    value={exercise.setsCompleted}
-                    onChange={(e) => handleExerciseChange(index, 'setsCompleted', parseInt(e.target.value) || 0)}
-                    min={1}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor={`exercise-${index}-reps`}>Reps Completed</Label>
-                  <Input
-                    id={`exercise-${index}-reps`}
-                    type="number"
-                    value={exercise.repsCompleted}
-                    onChange={(e) => handleExerciseChange(index, 'repsCompleted', parseInt(e.target.value) || 0)}
-                    min={1}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor={`exercise-${index}-weight`}>Weight Used (kg)</Label>
-                  <Input
-                    id={`exercise-${index}-weight`}
-                    type="number"
-                    value={exercise.weightUsed || ''}
-                    onChange={(e) => handleExerciseChange(index, 'weightUsed', e.target.value ? parseInt(e.target.value) : undefined)}
-                    min={0}
-                    placeholder="Optional"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor={`exercise-${index}-duration`}>Duration (sec)</Label>
-                  <Input
-                    id={`exercise-${index}-duration`}
-                    type="number"
-                    value={exercise.durationCompleted || ''}
-                    onChange={(e) => handleExerciseChange(index, 'durationCompleted', e.target.value ? parseInt(e.target.value) : undefined)}
-                    min={0}
-                    placeholder="Optional"
-                  />
-                </div>
+              <div>
+                <Label htmlFor={`exercise-${index}-sets`}>Sets</Label>
+                <Input
+                  id={`exercise-${index}-sets`}
+                  type="number"
+                  value={exercise.sets}
+                  onChange={(e) => handleExerciseChange(index, 'sets', parseInt(e.target.value) || 0)}
+                  min={1}
+                  required
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor={`exercise-${index}-reps`}>Reps</Label>
+                <Input
+                  id={`exercise-${index}-reps`}
+                  type="number"
+                  value={exercise.reps}
+                  onChange={(e) => handleExerciseChange(index, 'reps', parseInt(e.target.value) || 0)}
+                  min={1}
+                  required
+                />
               </div>
             </div>
-          ))}
-        </div>
+            
+            <div>
+              <Label htmlFor={`exercise-${index}-weight`}>Weight (kg)</Label>
+              <Input
+                id={`exercise-${index}-weight`}
+                type="number"
+                value={exercise.weight || ''}
+                onChange={(e) => handleExerciseChange(index, 'weight', e.target.value ? parseInt(e.target.value) : null)}
+                min={0}
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+        ))}
       </div>
       
       <div className="flex justify-end">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : 'Log Workout'}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : 'Log Workout'}
         </Button>
       </div>
     </form>

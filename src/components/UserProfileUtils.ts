@@ -1,39 +1,58 @@
 
-import { User } from "@supabase/supabase-js";
+import { User } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import { ExtendedUser } from "../context/AuthContext";
 
-// Helper functions to safely access user properties
-export const getUserDisplayName = (user: User | null): string => {
-  if (!user) return "User";
-  
-  // Cast to ExtendedUser if we've already enhanced it
-  const extendedUser = user as ExtendedUser;
-  
-  // Try to get the display name from our extended property first
-  if (extendedUser.displayName) return extendedUser.displayName;
-  
-  // Fall back to user_metadata if available
-  if (user.user_metadata?.full_name) return user.user_metadata.full_name;
-  if (user.user_metadata?.name) return user.user_metadata.name;
-  
-  // Fall back to email or empty string
-  return user.email?.split('@')[0] || "User";
+export const getUserProfile = async (user: User): Promise<ExtendedUser> => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('display_name, avatar_url, bio, fitness_goal')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user profile:', error);
+      return {
+        ...user,
+        displayName: user.email?.split('@')[0] || 'User',
+        isAdmin: false,
+      };
+    }
+
+    return {
+      ...user,
+      displayName: data.display_name || user.email?.split('@')[0] || 'User',
+      isAdmin: false,
+    };
+  } catch (error) {
+    console.error('Error in getUserProfile:', error);
+    return {
+      ...user,
+      displayName: user.email?.split('@')[0] || 'User',
+      isAdmin: false,
+    };
+  }
 };
 
-export const getUserPhotoURL = (user: User | null): string | null => {
-  if (!user) return null;
-  
-  // Cast to ExtendedUser if we've already enhanced it
-  const extendedUser = user as ExtendedUser;
-  
-  // Try to get the photo URL from our extended property first
-  if (extendedUser.photoURL) return extendedUser.photoURL;
-  
-  // Fall back to user_metadata if available
-  return user.user_metadata?.avatar_url || null;
-};
+export const updateUserProfile = async (userId: string, profileData: any) => {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        ...profileData,
+        updated_at: new Date().toISOString(),
+      });
 
-export const getUserUsername = (user: User | null): string => {
-  if (!user) return "user";
-  return user.email?.split('@')[0] || "user";
+    if (error) {
+      console.error('Error updating profile:', error);
+      return { success: false, error };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updateUserProfile:', error);
+    return { success: false, error };
+  }
 };

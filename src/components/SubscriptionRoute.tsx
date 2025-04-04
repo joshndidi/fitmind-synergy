@@ -1,45 +1,41 @@
 
 import { ReactNode } from "react";
-import { Navigate, useLocation } from "react-router-dom";
-import { useSubscription } from "../context/SubscriptionContext";
-import { useAuth } from "../context/AuthContext";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { useSubscription } from "@/context/SubscriptionContext";
+import { AiFeatureComingSoon } from "@/components/AiFeatureComingSoon";
 
-const SubscriptionRoute = ({ children }: { children: ReactNode }) => {
-  const { isActive, loading: subscriptionLoading } = useSubscription();
-  const { user, loading: authLoading } = useAuth();
-  const location = useLocation();
+interface ProtectedRouteProps {
+  children: ReactNode;
+  adminOnly?: boolean;
+}
 
-  // If still loading, show a loading spinner
-  if (authLoading || subscriptionLoading) {
+export const SubscriptionRoute = ({ children, adminOnly = false }: ProtectedRouteProps) => {
+  const { subscription, loading: subscriptionLoading } = useSubscription();
+  const { user, loading: userLoading } = useAuth();
+  
+  // Extend user type with isAdmin property
+  const isAdmin = user?.email?.endsWith('@admin.com') || false;
+
+  // While loading, show a loading indicator
+  if (userLoading || subscriptionLoading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  // Admin users can access all features
-  if (user?.isAdmin) {
-    return <>{children}</>;
+  // For admin-only routes, check if the user is an admin
+  if (adminOnly && !isAdmin) {
+    return <Navigate to="/dashboard" />;
   }
 
-  // If not subscribed, redirect to subscription page
-  if (!isActive) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center glass-card p-8">
-        <h2 className="text-2xl font-bold mb-4 text-text-light">
-          Premium Feature
-        </h2>
-        <p className="text-text-muted mb-6 text-center max-w-md">
-          This feature requires an active subscription. Subscribe to FitMind Premium for just £5 per month to access all AI-powered features.
-        </p>
-        <Navigate to="/subscription" state={{ from: location }} replace />
-      </div>
-    );
+  // If subscription check is required and user doesn't have a subscription, show coming soon page
+  if (!subscription?.isPro && !isAdmin) {
+    return <AiFeatureComingSoon />;
   }
 
-  // If subscribed, show the children
+  // User has required subscription or is an admin, render the protected content
   return <>{children}</>;
 };
-
-export default SubscriptionRoute;
