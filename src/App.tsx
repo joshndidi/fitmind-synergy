@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -27,6 +27,7 @@ import NutritionPage from "@/pages/nutrition";
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import Layout from '@/components/Layout';
 import CreateCustomWorkout from "@/pages/CreateCustomWorkout";
+import SubscriptionSuccess from "@/pages/subscription/success";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ function AppRoutes() {
         <Route path="/create-workout" element={<CreateCustomWorkout />} />
         <Route path="/calories" element={<CalorieTracker />} />
         <Route path="/subscription" element={<Subscription />} />
+        <Route path="/subscription/success" element={<SubscriptionSuccess />} />
         <Route path="/social" element={<Social />} />
         <Route path="/achievements" element={<Achievements />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
@@ -105,14 +107,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <SubscriptionProvider>
-          <Router>
-            <TooltipProvider>
-              <div className="min-h-screen bg-gradient-dark">
-                <AppRoutes />
-                <Toaster />
-              </div>
-            </TooltipProvider>
-          </Router>
+          <TooltipProvider>
+            <div className="min-h-screen bg-gradient-dark">
+              <AppRoutes />
+              <Toaster />
+            </div>
+          </TooltipProvider>
         </SubscriptionProvider>
       </AuthProvider>
     </QueryClientProvider>
@@ -120,3 +120,4 @@ function App() {
 }
 
 export default App;
+

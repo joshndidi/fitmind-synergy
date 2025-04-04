@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
 }
 
 export const SubscriptionRoute = ({ children, adminOnly = false }: ProtectedRouteProps) => {
-  const { subscription, loading: subscriptionLoading } = useSubscription();
+  const { isActive, loading: subscriptionLoading } = useSubscription();
   const { user, loading: userLoading } = useAuth();
   
   // Extend user type with isAdmin property
@@ -32,7 +32,7 @@ export const SubscriptionRoute = ({ children, adminOnly = false }: ProtectedRout
   }
 
   // If subscription check is required and user doesn't have a subscription, show coming soon page
-  if (!subscription?.isPro && !isAdmin) {
+  if (!isActive && !isAdmin) {
     return <AiFeatureComingSoon />;
   }
 
