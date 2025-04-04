@@ -42,7 +42,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  return user ? <>{children}</> : <Navigate to="/" />;
+  return user ? <>{children}</> : <Navigate to="/" replace />;
 }
 
 function AppRoutes() {
@@ -58,7 +58,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={!user ? <Index /> : <Navigate to="/dashboard" />} />
+      <Route path="/" element={!user ? <Index /> : <Navigate to="/dashboard" replace />} />
       
       <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
@@ -120,4 +120,3 @@ function App() {
 }
 
 export default App;
-

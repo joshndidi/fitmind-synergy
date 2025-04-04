@@ -12,8 +12,9 @@ const Index = () => {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // If user is already logged in, redirect to dashboard
     if (user) {
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     }
     
     // Simulate loading for smooth animation only if not actually loading auth

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import { Shield } from "lucide-react";
@@ -13,8 +13,16 @@ type AuthFormProps = {
 const AuthForm = ({ type }: AuthFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login, signup, loginWithGoogle, loading } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login, signup, loginWithGoogle, user } = useAuth();
   const navigate = useNavigate();
+  
+  // Check if user is already authenticated and redirect if necessary
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,26 +33,45 @@ const AuthForm = ({ type }: AuthFormProps) => {
     }
     
     try {
+      setIsSubmitting(true);
+      
       if (type === "login") {
         const id = toast.loading("Signing in...");
-        await login(email, password);
+        const { error } = await login(email, password);
         toast.dismiss(id);
-        navigate("/dashboard");
+        
+        if (error) {
+          toast.error(error.message || "Failed to sign in");
+          return;
+        }
+        
+        toast.success("Signed in successfully!");
+        // The useEffect above will handle navigation once user state updates
       } else {
         const id = toast.loading("Creating account...");
-        await signup(email, password);
+        const { error } = await signup(email, password);
         toast.dismiss(id);
-        navigate("/dashboard");
+        
+        if (error) {
+          toast.error(error.message || "Failed to create account");
+          return;
+        }
+        
+        toast.success("Account created successfully!");
+        // The useEffect above will handle navigation once user state updates
       }
     } catch (error: any) {
       console.error("Auth error:", error);
       toast.error(error.message || "Authentication failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
+      // Redirection is handled by Supabase
     } catch (error: any) {
       console.error("Google login error:", error);
       toast.error(error.message || "Google login failed");
@@ -53,13 +80,16 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
   const handleAdminLogin = async () => {
     try {
+      setIsSubmitting(true);
       const id = toast.loading("Logging in as admin...");
       await login("admin@admin.com", "admin");
       toast.dismiss(id);
-      navigate("/dashboard");
+      // The useEffect above will handle navigation once user state updates
     } catch (error: any) {
       console.error("Admin login error:", error);
       toast.error(error.message || "Admin login failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -100,10 +130,10 @@ const AuthForm = ({ type }: AuthFormProps) => {
         
         <Button
           type="submit"
-          disabled={loading}
+          disabled={isSubmitting}
           className="w-full"
         >
-          {loading ? (
+          {isSubmitting ? (
             <span className="flex items-center justify-center">
               <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -124,7 +154,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
           <Button
             type="button"
             onClick={handleGoogleLogin}
-            disabled={loading}
+            disabled={isSubmitting}
             variant="secondary"
             className="w-full flex items-center justify-center gap-2"
           >
@@ -157,6 +187,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
             <Button
               type="button"
               onClick={handleAdminLogin}
+              disabled={isSubmitting}
               variant="outline"
               className="w-full flex items-center justify-center gap-2 text-xs sm:text-sm"
             >
