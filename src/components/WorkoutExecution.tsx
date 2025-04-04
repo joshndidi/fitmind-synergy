@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWorkout } from '@/hooks/useWorkout';
@@ -168,6 +167,7 @@ export function WorkoutExecution() {
           weight: (ex.weight || 0).toString(),
           rest: ex.restTime ? `${ex.restTime}s` : '60s'
         })),
+        date: new Date().toISOString().split('T')[0], // Add the required date field
         totalWeight: totalWeight
       };
       

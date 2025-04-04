@@ -67,52 +67,49 @@ export default function Leaderboard() {
     try {
       setLoading(true);
       
-      let query = supabase
-        .from('profiles')
-        .select(`
-          id,
-          display_name,
-          avatar_url,
-          country,
-          province,
-          city,
-          (
-            SELECT SUM(total_weight)
-            FROM completed_workouts
-            WHERE user_id = profiles.id
-            ${timeframe === 'month' ? 'AND completed_at > date_trunc(\'month\', now())' : ''}
-            ${timeframe === 'week' ? 'AND completed_at > date_trunc(\'week\', now())' : ''}
-          ) as total_weight,
-          (
-            SELECT COUNT(*)
-            FROM completed_workouts
-            WHERE user_id = profiles.id
-            ${timeframe === 'month' ? 'AND completed_at > date_trunc(\'month\', now())' : ''}
-            ${timeframe === 'week' ? 'AND completed_at > date_trunc(\'week\', now())' : ''}
-          ) as workout_count
-        `)
-        .order('total_weight', { ascending: false })
-        .limit(100);
-        
-      // Apply location filters if needed
-      if (locationFilter === 'country' && userProfile.country) {
-        query = query.eq('country', userProfile.country);
-      } else if (locationFilter === 'province' && userProfile.province) {
-        query = query.eq('province', userProfile.province);
-      }
-
-      const { data, error } = await query;
+      // Create a view-like query with separate parts for clarity and type safety
+      const timeframeCondition = timeframe === 'month' 
+        ? "AND completed_at > date_trunc('month', now())" 
+        : timeframe === 'week' 
+          ? "AND completed_at > date_trunc('week', now())" 
+          : "";
+      
+      // Fetch user ids with their weights and workout counts
+      const weightQuery = `
+        SELECT 
+          profiles.id,
+          profiles.display_name,
+          profiles.avatar_url,
+          profiles.country,
+          profiles.province,
+          profiles.city,
+          COALESCE(SUM(cw.total_weight), 0) as total_weight,
+          COUNT(cw.id) as workout_count
+        FROM profiles
+        LEFT JOIN completed_workouts cw ON profiles.id = cw.user_id
+        ${timeframeCondition ? `WHERE TRUE ${timeframeCondition}` : ''}
+        ${locationFilter === 'country' && userProfile.country ? 
+          `AND profiles.country = '${userProfile.country}'` : ''}
+        ${locationFilter === 'province' && userProfile.province ? 
+          `AND profiles.province = '${userProfile.province}'` : ''}
+        GROUP BY profiles.id
+        ORDER BY total_weight DESC
+        LIMIT 100
+      `;
+      
+      const { data, error } = await supabase.rpc('execute_sql', { sql: weightQuery });
 
       if (error) throw error;
 
-      const formattedUsers = data
-        .filter(user => user.total_weight !== null)
-        .map((user, index) => ({
+      // Format the leaderboard data
+      const formattedUsers: UserStats[] = (data || [])
+        .filter((user: any) => user.id)
+        .map((user: any, index: number) => ({
           id: user.id,
           display_name: user.display_name || 'Anonymous User',
           avatar_url: user.avatar_url,
-          total_weight: user.total_weight || 0,
-          workout_count: user.workout_count || 0,
+          total_weight: parseInt(user.total_weight) || 0,
+          workout_count: parseInt(user.workout_count) || 0,
           country: user.country,
           province: user.province,
           city: user.city,
@@ -123,6 +120,8 @@ export default function Leaderboard() {
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
       toast.error('Failed to load leaderboard');
+      // Fallback to empty array in case of error
+      setUsers([]);
     } finally {
       setLoading(false);
     }
