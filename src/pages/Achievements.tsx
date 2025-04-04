@@ -1,253 +1,261 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Medal, Target, Flame, Dumbbell, Calendar, Award, Star } from 'lucide-react';
-import { toast } from 'sonner';
 
-interface Achievement {
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useWorkout } from "@/hooks/useWorkout";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
+
+type Achievement = {
   id: string;
   name: string;
   description: string;
+  threshold: number;
   icon: string;
+  achieved: boolean;
   progress: number;
-  total: number;
-  is_completed: boolean;
-  completed_at?: string;
-}
+};
 
-export default function Achievements() {
-  const { user } = useAuth();
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchAchievements();
-  }, []);
-
-  const fetchAchievements = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('achievements')
-        .select(`
-          *,
-          user_achievements!inner(
-            progress,
-            completed_at
-          )
-        `)
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
-
-      const formattedAchievements = data.map(achievement => ({
-        id: achievement.id,
-        name: achievement.name,
-        description: achievement.description,
-        icon: achievement.icon,
-        progress: achievement.user_achievements[0]?.progress || 0,
-        total: achievement.total,
-        is_completed: achievement.user_achievements[0]?.completed_at !== null,
-        completed_at: achievement.user_achievements[0]?.completed_at
-      }));
-
-      setAchievements(formattedAchievements);
-    } catch (error) {
-      console.error('Error fetching achievements:', error);
-      toast.error('Failed to load achievements');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getIcon = (icon: string) => {
-    switch (icon) {
-      case 'trophy':
-        return <Trophy className="h-6 w-6 text-yellow-500" />;
-      case 'medal':
-        return <Medal className="h-6 w-6 text-blue-500" />;
-      case 'award':
-        return <Award className="h-6 w-6 text-purple-500" />;
-      case 'star':
-        return <Star className="h-6 w-6 text-orange-500" />;
-      case 'target':
-        return <Target className="h-6 w-6 text-red-500" />;
-      case 'flame':
-        return <Flame className="h-6 w-6 text-orange-500" />;
-      default:
-        return <Trophy className="h-6 w-6 text-yellow-500" />;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
+const AchievementBadge = ({ achievement }: { achievement: Achievement }) => {
   return (
-    <div className="container mx-auto py-6 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-4xl font-bold flex items-center gap-2">
-          <Trophy className="h-8 w-8" />
-          Achievements
-        </h1>
+    <div 
+      className={`glass-card-hover p-4 ${achievement.achieved ? 'border-primary/40' : ''}`}
+    >
+      <div className="text-center mb-2">
+        <span className="text-3xl">{achievement.icon}</span>
       </div>
-
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-12">
-        <div className="md:col-span-8">
-          <Tabs defaultValue="all" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="workout">Workout</TabsTrigger>
-              <TabsTrigger value="strength">Strength</TabsTrigger>
-              <TabsTrigger value="cardio">Cardio</TabsTrigger>
-              <TabsTrigger value="consistency">Consistency</TabsTrigger>
-            </TabsList>
-
-            {['all', 'workout', 'strength', 'cardio', 'consistency'].map((category) => (
-              <TabsContent key={category} value={category}>
-                <div className="grid gap-4 grid-cols-1">
-                  {achievements
-                    .filter(achievement => category === 'all' || achievement.icon === category)
-                    .map(achievement => (
-                      <Card key={achievement.id} className={`transition-all duration-300 ${achievement.is_completed ? 'border-primary/50' : ''}`}>
-                        <CardContent className="pt-6">
-                          <div className="flex items-start gap-4">
-                            <div className={`p-3 rounded-lg ${getRarityColor(achievement.icon)} text-white`}>
-                              {getIcon(achievement.icon)}
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  <h3 className="font-semibold flex items-center gap-2">
-                                    {achievement.name}
-                                    {achievement.is_completed && (
-                                      <Badge variant="secondary" className="ml-2">
-                                        Completed
-                                      </Badge>
-                                    )}
-                                  </h3>
-                                  <p className="text-sm text-muted-foreground">{achievement.description}</p>
-                                </div>
-                                <Badge>
-                                  {achievement.icon.charAt(0).toUpperCase() + achievement.icon.slice(1)}
-                                </Badge>
-                              </div>
-                              <div className="mt-4 space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span>Progress</span>
-                                  <span>{achievement.progress} / {achievement.total}</span>
-                                </div>
-                                <Progress value={(achievement.progress / achievement.total) * 100} />
-                              </div>
-                              {achievement.completed_at && (
-                                <p className="text-sm text-muted-foreground mt-2">
-                                  Earned on {new Date(achievement.completed_at).toLocaleDateString()}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                </div>
-              </TabsContent>
-            ))}
-          </Tabs>
-        </div>
-
-        <div className="md:col-span-4 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5" />
-                Achievement Stats
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span>Total Progress</span>
-                    <span className="font-medium">
-                      {achievements.filter(a => a.is_completed).length} / {achievements.length}
-                    </span>
-                  </div>
-                  <Progress 
-                    value={(achievements.filter(a => a.is_completed).length / achievements.length) * 100} 
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="font-medium">Rarity Breakdown</h4>
-                  <div className="space-y-3">
-                    {achievements.map((achievement) => (
-                      <div key={achievement.icon} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${getRarityColor(achievement.icon)}`} />
-                          <span className="capitalize">{achievement.icon}</span>
-                        </div>
-                        <span>{achievements.filter(a => a.icon === achievement.icon).length}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Medal className="h-5 w-5" />
-                Recent Unlocks
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {achievements
-                  .filter(a => a.is_completed)
-                  .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())
-                  .slice(0, 3)
-                  .map(achievement => (
-                    <div key={achievement.id} className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${getRarityColor(achievement.icon)} text-white`}>
-                        {getIcon(achievement.icon)}
-                      </div>
-                      <div>
-                        <p className="font-medium">{achievement.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(achievement.completed_at!).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      
+      <h3 className="font-bold text-center mb-1">
+        {achievement.name}
+      </h3>
+      
+      <p className="text-text-muted text-sm text-center mb-3">
+        {achievement.description}
+      </p>
+      
+      <div className="relative h-2 bg-black/20 rounded-full overflow-hidden mb-2">
+        <div 
+          className={`absolute left-0 top-0 h-full ${achievement.achieved ? 'bg-primary' : 'bg-primary/40'}`}
+          style={{ width: `${achievement.progress * 100}%` }}
+        />
+      </div>
+      
+      <div className="text-center">
+        {achievement.achieved ? (
+          <Badge className="bg-primary text-white">Achieved</Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {Math.round(achievement.progress * 100)}% complete
+          </span>
+        )}
       </div>
     </div>
   );
-}
+};
 
-const getRarityColor = (rarity: string) => {
-  switch (rarity) {
-    case 'common':
-      return 'bg-gray-500';
-    case 'rare':
-      return 'bg-blue-500';
-    case 'epic':
-      return 'bg-purple-500';
-    case 'legendary':
-      return 'bg-yellow-500';
-    default:
-      return 'bg-gray-500';
-  }
-}; 
+export default function Achievements() {
+  const { user } = useAuth();
+  const { getAchievements, totalWeightLifted } = useWorkout();
+  const [profile, setProfile] = useState<any>(null);
+  const [locationTitles, setLocationTitles] = useState<{
+    country: string;
+    province: string;
+    city: string;
+  }>({
+    country: 'Your Country',
+    province: 'Your State/Province',
+    city: 'Your City'
+  });
+  
+  useEffect(() => {
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
+  
+  const fetchUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+        
+      if (error) throw error;
+      
+      setProfile(data);
+      setLocationTitles({
+        country: data.country || 'Your Country',
+        province: data.province || 'Your State/Province',
+        city: data.city || 'Your City'
+      });
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+  
+  const liftingAchievements = getAchievements();
+  
+  const workoutAchievements = [
+    {
+      id: 'first-workout',
+      name: "First Workout",
+      description: "Complete your first workout",
+      threshold: 1,
+      icon: "🏋️‍♂️",
+      achieved: totalWeightLifted > 0,
+      progress: totalWeightLifted > 0 ? 1 : 0
+    },
+    {
+      id: 'workout-streak',
+      name: "Workout Streak",
+      description: "Complete workouts 3 days in a row",
+      threshold: 3,
+      icon: "🔥",
+      achieved: false,
+      progress: 0.33
+    },
+    {
+      id: 'diverse-training',
+      name: "Diverse Training",
+      description: "Try all workout types",
+      threshold: 4,
+      icon: "🌟",
+      achieved: false,
+      progress: 0.5
+    },
+    {
+      id: 'early-bird',
+      name: "Early Bird",
+      description: "Complete 5 workouts before 8 AM",
+      threshold: 5,
+      icon: "🌅",
+      achieved: false,
+      progress: 0.2
+    },
+    {
+      id: 'night-owl',
+      name: "Night Owl",
+      description: "Complete 5 workouts after 8 PM",
+      threshold: 5,
+      icon: "🌙",
+      achieved: false,
+      progress: 0.6
+    }
+  ];
+  
+  const locationAchievements = [
+    {
+      id: 'local-hero',
+      name: `${locationTitles.city} Hero`,
+      description: `Top 10 in ${locationTitles.city}`,
+      threshold: 1,
+      icon: "🏆",
+      achieved: false,
+      progress: 0.7
+    },
+    {
+      id: 'regional-champion',
+      name: `${locationTitles.province} Champion`,
+      description: `Top 50 in ${locationTitles.province}`,
+      threshold: 1,
+      icon: "🥇",
+      achieved: false,
+      progress: 0.3
+    },
+    {
+      id: 'national-competitor',
+      name: `${locationTitles.country} Competitor`,
+      description: `Top 100 in ${locationTitles.country}`,
+      threshold: 1,
+      icon: "🏅",
+      achieved: false,
+      progress: 0.1
+    },
+    {
+      id: 'global-athlete',
+      name: "Global Athlete",
+      description: "Top 1000 worldwide",
+      threshold: 1,
+      icon: "🌍",
+      achieved: false,
+      progress: 0.05
+    }
+  ];
+
+  return (
+    <div className="container mx-auto py-6 px-4">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Your Achievements</h1>
+        <p className="text-lg text-muted-foreground">
+          Track your progress and earn badges as you reach fitness milestones
+        </p>
+      </div>
+      
+      <Tabs defaultValue="lifting">
+        <TabsList className="mb-6">
+          <TabsTrigger value="lifting">Lifting</TabsTrigger>
+          <TabsTrigger value="workouts">Workouts</TabsTrigger>
+          <TabsTrigger value="location">Location Rankings</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="lifting">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex justify-between items-center">
+                <span>Lifting Achievements</span>
+                <span className="text-primary text-lg">
+                  {totalWeightLifted.toLocaleString()} kg
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {liftingAchievements.map((achievement) => (
+                  <AchievementBadge key={achievement.id} achievement={achievement} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="workouts">
+          <Card>
+            <CardHeader>
+              <CardTitle>Workout Achievements</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {workoutAchievements.map((achievement) => (
+                  <AchievementBadge key={achievement.id} achievement={achievement} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="location">
+          <Card>
+            <CardHeader>
+              <CardTitle>Location-Based Achievements</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {locationAchievements.map((achievement) => (
+                  <AchievementBadge key={achievement.id} achievement={achievement} />
+                ))}
+              </div>
+              
+              {(!profile?.country || !profile?.province) && (
+                <div className="mt-6 p-4 bg-muted rounded-lg text-center">
+                  <p className="mb-2">Update your location in settings to track location-based achievements!</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

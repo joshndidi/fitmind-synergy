@@ -1,297 +1,225 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useWorkout } from "@/hooks/useWorkout";
-import { useSubscription } from "@/context/SubscriptionContext";
-import { Dumbbell, Plus, Brain, Calendar, Edit2, Trash2, MoreVertical } from "lucide-react";
-import WorkoutCard from "@/components/WorkoutCard";
-import { Progress } from "@/components/ui/progress";
-import { toast } from "sonner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { WorkoutPlan, WorkoutIntensity } from "@/types/workout";
 
-// Helper function to map WorkoutIntensity to display intensity
-const mapIntensityToDisplay = (intensity: WorkoutIntensity): "High" | "Medium" | "Low" => {
-  switch (intensity) {
-    case 'advanced': return 'High';
-    case 'intermediate': return 'Medium';
-    case 'beginner': return 'Low';
-    default: return 'Medium';
-  }
-};
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useWorkout } from '@/hooks/useWorkout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dumbbell, Clock, Calendar, Plus, ArrowRight } from 'lucide-react';
+import LogWorkoutForm from '@/components/LogWorkoutForm';
+import { WorkoutPlan, WorkoutType } from '@/types/workout';
 
-const WorkoutSelection = () => {
+export default function WorkoutSelection() {
   const navigate = useNavigate();
-  const { workoutPlans, loading, deleteWorkoutPlan } = useWorkout();
-  const { isActive } = useSubscription();
-  const [userWorkouts, setUserWorkouts] = useState<WorkoutPlan[]>([]);
-  const [aiWorkouts, setAiWorkouts] = useState<WorkoutPlan[]>([]);
-
+  const { workoutPlans, loading } = useWorkout();
+  const [showLogDialog, setShowLogDialog] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<'all' | 'templates' | 'custom'>('all');
+  const [filteredWorkouts, setFilteredWorkouts] = useState<WorkoutPlan[]>([]);
+  
   useEffect(() => {
-    // Separate AI-generated workouts from user-created ones
-    if (workoutPlans.length > 0) {
-      const ai = workoutPlans.filter(w => w.isAiGenerated);
-      const user = workoutPlans.filter(w => !w.isAiGenerated);
-      setAiWorkouts(ai);
-      setUserWorkouts(user);
+    if (workoutPlans) {
+      filterWorkouts(selectedTab);
     }
-  }, [workoutPlans]);
-
-  const handleCreatePlan = () => {
-    navigate("/workout/create");
-  };
-
-  const handleEditPlan = (id: string) => {
-    navigate(`/workout/edit/${id}`);
-  };
-
-  const handleDeletePlan = async (id: string) => {
-    try {
-      await deleteWorkoutPlan(id);
-      toast.success('Workout deleted successfully');
-    } catch (error) {
-      toast.error('Failed to delete workout');
-      console.error('Error deleting workout:', error);
+  }, [workoutPlans, selectedTab]);
+  
+  const filterWorkouts = (tab: 'all' | 'templates' | 'custom') => {
+    switch (tab) {
+      case 'templates':
+        setFilteredWorkouts(workoutPlans.filter(wp => wp.isTemplate));
+        break;
+      case 'custom':
+        setFilteredWorkouts(workoutPlans.filter(wp => !wp.isTemplate && !wp.isAiGenerated));
+        break;
+      case 'all':
+      default:
+        setFilteredWorkouts(workoutPlans);
+        break;
     }
   };
-
-  const handleSelectWorkout = (id: string) => {
-    navigate(`/workout-display/${id}`);
-  };
-
-  const getCompletionPercentage = (workoutId: string) => {
-    // Check localStorage for workout progress
-    const savedProgressKey = `workout-progress-${workoutId}`;
-    const savedProgress = localStorage.getItem(savedProgressKey);
-    
-    if (savedProgress) {
-      const parsedProgress = JSON.parse(savedProgress);
-      const completed = parsedProgress.filter(Boolean).length;
-      const total = parsedProgress.length;
-      return Math.round((completed / total) * 100);
+  
+  const getWorkoutTypeIcon = (type: WorkoutType) => {
+    switch (type) {
+      case 'strength':
+        return <Dumbbell className="h-5 w-5 text-blue-500" />;
+      case 'cardio':
+        return <Clock className="h-5 w-5 text-red-500" />;
+      case 'flexibility':
+        return <ArrowRight className="h-5 w-5 text-green-500" />;
+      default:
+        return <Dumbbell className="h-5 w-5 text-primary" />;
     }
-    
-    return 0;
+  };
+  
+  const handleCloseLogDialog = () => {
+    setShowLogDialog(false);
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[80vh]">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="page-container">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-text-light mb-2">Workout Plans</h1>
-        <p className="text-text-muted">Choose a workout plan or create a new one</p>
-      </div>
-
-      {/* AI-Generated Workouts Section */}
-      <div className="mb-10">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-text-light flex items-center gap-2">
-            <Brain size={20} className="text-primary" />
-            AI-Generated Workouts
-          </h2>
-          <Button
-            onClick={() => navigate("/workout-ai")}
-            variant="outline"
-            className="flex items-center gap-2"
-            disabled={!isActive}
-          >
-            <Plus size={16} />
-            Create AI Plan
-          </Button>
-        </div>
-
-        {!isActive && (
-          <Card className="glass-card mb-6">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="bg-primary/20 p-3 rounded-full">
-                  <Brain size={24} className="text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium text-text-light mb-1">Premium Feature</h3>
-                  <p className="text-text-muted">
-                    Subscribe to FitMind Premium to access AI-generated workout plans
-                  </p>
-                </div>
-                <Button
-                  className="ml-auto"
-                  onClick={() => navigate("/subscription")}
-                >
-                  Subscribe
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {isActive && aiWorkouts.length === 0 ? (
-          <Card className="glass-card mb-6">
-            <CardContent className="pt-6 pb-6 text-center">
-              <Brain size={48} className="text-text-muted mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-text-light mb-2">No AI Workouts Yet</h3>
-              <p className="text-text-muted mb-4">
-                Create your first AI-generated workout plan tailored to your fitness goals.
-              </p>
-              <Button onClick={() => navigate("/workout-ai")}>Create AI Plan</Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {aiWorkouts.map((workout) => (
-              <div key={workout.id} className="relative">
-                <WorkoutCard
-                  title={workout.title}
-                  type={workout.type}
-                  duration={workout.duration}
-                  calories={workout.calories}
-                  date={workout.createdAt}
-                  intensity={mapIntensityToDisplay(workout.intensity)}
-                  onClick={() => handleSelectWorkout(workout.id)}
-                />
-                <div className="mt-2">
-                  <div className="flex justify-between text-xs text-text-muted mb-1">
-                    <span>Progress</span>
-                    <span>{getCompletionPercentage(workout.id)}%</span>
-                  </div>
-                  <Progress value={getCompletionPercentage(workout.id)} className="h-1.5" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* User-Created Workouts Section */}
-      <div className="mb-10">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-text-light flex items-center gap-2">
-            <Dumbbell size={20} className="text-primary" />
-            Your Custom Workouts
-          </h2>
-          <Button
-            onClick={handleCreatePlan}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Plus size={16} />
-            Create Custom Plan
-          </Button>
-        </div>
-
-        {userWorkouts.length === 0 ? (
-          <Card className="glass-card mb-6">
-            <CardContent className="pt-6 pb-6 text-center">
-              <Dumbbell size={48} className="text-text-muted mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-text-light mb-2">No Custom Workouts Yet</h3>
-              <p className="text-text-muted mb-4">
-                Create your own custom workout plan to track your progress.
-              </p>
-              <Button onClick={handleCreatePlan}>
-                Create Custom Plan
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {userWorkouts.map((workout) => (
-              <div key={workout.id} className="relative group">
-                <WorkoutCard
-                  title={workout.title}
-                  type={workout.type}
-                  duration={workout.duration}
-                  calories={workout.calories}
-                  date={workout.createdAt}
-                  intensity={mapIntensityToDisplay(workout.intensity)}
-                  onClick={() => handleSelectWorkout(workout.id)}
-                />
-                <div className="mt-2">
-                  <div className="flex justify-between text-xs text-text-muted mb-1">
-                    <span>Progress</span>
-                    <span>{getCompletionPercentage(workout.id)}%</span>
-                  </div>
-                  <Progress value={getCompletionPercentage(workout.id)} className="h-1.5" />
-                </div>
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEditPlan(workout.id)}>
-                        <Edit2 className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => handleDeletePlan(workout.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Log Your Workout Section */}
-      <div className="mb-10">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-text-light flex items-center gap-2">
-            <Calendar size={20} className="text-primary" />
-            Recent Workouts
-          </h2>
-          <Button
-            onClick={() => navigate("/dashboard", { state: { openDialog: "logWorkout" } })}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Plus size={16} />
-            Log Workout
-          </Button>
+    <div className="container mx-auto py-6 px-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Workouts</h1>
+          <p className="text-muted-foreground mt-1">Start a workout or log a completed session</p>
         </div>
         
-        <Card className="glass-card">
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <Calendar size={48} className="text-text-muted mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-text-light mb-2">Track Your Workouts</h3>
-              <p className="text-text-muted mb-4">
-                Log your workouts to track your progress and achievements.
-              </p>
-            </div>
-          </CardContent>
-          <CardFooter className="border-t border-white/10 pt-4">
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => navigate("/dashboard", { state: { openDialog: "logWorkout" } })}
-            >
-              Log New Workout
-            </Button>
-          </CardFooter>
-        </Card>
+        <div className="flex flex-wrap gap-3">
+          <Dialog open={showLogDialog} onOpenChange={setShowLogDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Calendar className="mr-2 h-4 w-4" />
+                Log Workout
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl w-full">
+              <DialogHeader>
+                <DialogTitle>Log Your Workout</DialogTitle>
+              </DialogHeader>
+              <LogWorkoutForm onSuccess={handleCloseLogDialog} />
+            </DialogContent>
+          </Dialog>
+          
+          <Button onClick={() => navigate('/create-workout')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Plan
+          </Button>
+        </div>
       </div>
+      
+      <Tabs defaultValue="all" value={selectedTab} onValueChange={(v) => setSelectedTab(v as any)}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="all">All Workouts</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="custom">My Workouts</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="all" className="mt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredWorkouts.length === 0 ? (
+              <div className="col-span-full text-center py-10">
+                <p className="text-muted-foreground">No workouts found</p>
+                <Button onClick={() => navigate('/create-workout')} className="mt-4">
+                  Create Your First Workout
+                </Button>
+              </div>
+            ) : (
+              filteredWorkouts.map((workout) => (
+                <WorkoutCard 
+                  key={workout.id} 
+                  workout={workout} 
+                  onSelect={() => navigate(`/workout/${workout.id}`)} 
+                />
+              ))
+            )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="templates" className="mt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredWorkouts.length === 0 ? (
+              <div className="col-span-full text-center py-10">
+                <p className="text-muted-foreground">No template workouts found</p>
+              </div>
+            ) : (
+              filteredWorkouts.map((workout) => (
+                <WorkoutCard 
+                  key={workout.id} 
+                  workout={workout} 
+                  onSelect={() => navigate(`/workout/${workout.id}`)} 
+                />
+              ))
+            )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="custom" className="mt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredWorkouts.length === 0 ? (
+              <div className="col-span-full text-center py-10">
+                <p className="text-muted-foreground">No custom workouts found</p>
+                <Button onClick={() => navigate('/create-workout')} className="mt-4">
+                  Create Custom Workout
+                </Button>
+              </div>
+            ) : (
+              filteredWorkouts.map((workout) => (
+                <WorkoutCard 
+                  key={workout.id} 
+                  workout={workout} 
+                  onSelect={() => navigate(`/workout/${workout.id}`)} 
+                />
+              ))
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
-};
+}
 
-export default WorkoutSelection;
+interface WorkoutCardProps {
+  workout: WorkoutPlan;
+  onSelect: () => void;
+}
+
+function WorkoutCard({ workout, onSelect }: WorkoutCardProps) {
+  const getWorkoutTypeIcon = (type: WorkoutType) => {
+    switch (type) {
+      case 'strength':
+        return <Dumbbell className="h-5 w-5 text-blue-500" />;
+      case 'cardio':
+        return <Clock className="h-5 w-5 text-red-500" />;
+      case 'flexibility':
+        return <ArrowRight className="h-5 w-5 text-green-500" />;
+      default:
+        return <Dumbbell className="h-5 w-5 text-primary" />;
+    }
+  };
+
+  return (
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle>{workout.title}</CardTitle>
+          {getWorkoutTypeIcon(workout.type)}
+        </div>
+        <CardDescription className="line-clamp-2">
+          {workout.description || `A ${workout.intensity} ${workout.type} workout`}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pb-3">
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <p className="text-muted-foreground">Duration</p>
+            <p className="font-medium">{workout.duration} mins</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Intensity</p>
+            <p className="font-medium capitalize">{workout.intensity}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Exercises</p>
+            <p className="font-medium">{workout.exercises.length}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Type</p>
+            <p className="font-medium capitalize">{workout.type}</p>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button onClick={onSelect} className="w-full">
+          Start Workout
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}

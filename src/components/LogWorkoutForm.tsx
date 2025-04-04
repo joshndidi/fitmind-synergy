@@ -56,12 +56,30 @@ export default function LogWorkoutForm({ onSuccess }: LogWorkoutFormProps) {
     try {
       const { data, error } = await supabase
         .from('workout_plans')
-        .select('id, title, description, type, duration, intensity')
+        .select('id, title, description, type, duration, intensity, created_at, updated_at, is_ai_generated, is_template')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSavedWorkouts(data || []);
+      
+      // Transform the data to match WorkoutPlan type
+      const formattedWorkouts: WorkoutPlan[] = (data || []).map(workout => ({
+        id: workout.id,
+        userId: user?.id || '',
+        title: workout.title,
+        description: workout.description || '',
+        type: workout.type as WorkoutType,
+        duration: workout.duration,
+        calories: 0,
+        intensity: workout.intensity as any,
+        createdAt: workout.created_at,
+        updatedAt: workout.updated_at,
+        isAiGenerated: workout.is_ai_generated,
+        isTemplate: workout.is_template || false,
+        exercises: []
+      }));
+      
+      setSavedWorkouts(formattedWorkouts);
     } catch (error) {
       console.error('Error fetching saved workouts:', error);
     }
