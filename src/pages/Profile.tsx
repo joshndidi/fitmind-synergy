@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -9,92 +10,123 @@ import { Label } from '@/components/ui/label';
 import { Dumbbell, Activity, Trophy, Target, Flame, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface UserProfile {
-  username: string;
-  avatar_url: string;
-  bio: string;
-  total_workouts: number;
-  total_duration: number;
-  achievements_completed: number;
-  streak: number;
-  join_date: string;
+interface ProfileData {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  fitness_goal: string | null;
+  created_at: string;
 }
 
 export default function Profile() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [stats, setStats] = useState({
+    total_workouts: 0,
+    total_duration: 0,
+    achievements_completed: 0,
+    streak: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
+    display_name: '',
     bio: '',
+    fitness_goal: '',
   });
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (user) {
+      fetchProfile();
+      fetchWorkoutStats();
+    }
+  }, [user]);
 
   const fetchProfile = async () => {
     try {
+      if (!user) return;
+      
       const { data, error } = await supabase
         .from('profiles')
-        .select(`
-          username,
-          avatar_url,
-          bio,
-          created_at,
-          workouts(count),
-          workout_logs(duration),
-          achievements(count),
-          streaks(current_streak)
-        `)
-        .eq('id', user?.id)
+        .select('*')
+        .eq('id', user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching profile:', error);
+        toast.error('Failed to load profile');
+        return;
+      }
 
-      setProfile({
-        username: data.username,
-        avatar_url: data.avatar_url,
-        bio: data.bio || '',
-        total_workouts: data.workouts[0].count || 0,
-        total_duration: data.workout_logs.reduce((acc, log) => acc + (log.duration || 0), 0),
-        achievements_completed: data.achievements[0].count || 0,
-        streak: data.streaks[0]?.current_streak || 0,
-        join_date: data.created_at,
-      });
-
-      setFormData({
-        username: data.username,
-        bio: data.bio || '',
-      });
+      if (data) {
+        setProfile(data);
+        setFormData({
+          display_name: data.display_name || '',
+          bio: data.bio || '',
+          fitness_goal: data.fitness_goal || '',
+        });
+      }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error in fetchProfile:', error);
       toast.error('Failed to load profile');
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchWorkoutStats = async () => {
+    try {
+      if (!user) return;
+
+      // Fetch completed workouts count
+      const { data: workoutsData, error: workoutsError } = await supabase
+        .from('completed_workouts')
+        .select('id, duration')
+        .eq('user_id', user.id);
+
+      if (workoutsError) throw workoutsError;
+
+      const totalWorkouts = workoutsData?.length || 0;
+      const totalDuration = workoutsData?.reduce((sum, workout) => sum + (workout.duration || 0), 0) || 0;
+
+      setStats({
+        total_workouts: totalWorkouts,
+        total_duration: totalDuration,
+        achievements_completed: 0, // This would come from an achievements table
+        streak: 0, // This would need to be calculated based on workout frequency
+      });
+    } catch (error) {
+      console.error('Error fetching workout stats:', error);
+    }
+  };
+
   const handleUpdateProfile = async () => {
     try {
+      if (!user) return;
+
       const { error } = await supabase
         .from('profiles')
         .update({
-          username: formData.username,
+          display_name: formData.display_name,
           bio: formData.bio,
+          fitness_goal: formData.fitness_goal,
+          updated_at: new Date().toISOString(),
         })
-        .eq('id', user?.id);
+        .eq('id', user.id);
 
       if (error) throw error;
 
       setProfile(prev => prev ? {
         ...prev,
-        username: formData.username,
+        display_name: formData.display_name,
         bio: formData.bio,
+        fitness_goal: formData.fitness_goal,
       } : null);
+      
       setIsEditing(false);
       toast.success('Profile updated successfully');
+      fetchProfile(); // Refresh profile data
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
@@ -109,19 +141,37 @@ export default function Profile() {
     );
   }
 
-  if (!profile) {
+  // If no profile found but user exists, show a message
+  if (!profile && user) {
     return (
-      <div className="text-center">
-        <p className="text-text-muted">Profile not found</p>
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-text-light">Profile</h1>
+          <p className="text-xl text-text-muted mt-2">
+            Your profile is being set up...
+          </p>
+        </div>
+        <Button onClick={fetchProfile} className="mx-auto block">
+          Refresh
+        </Button>
+      </div>
+    );
+  }
+
+  // If no user, show a message
+  if (!user) {
+    return (
+      <div className="text-center p-4">
+        <p className="text-text-muted">Please sign in to view your profile</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-text-light mb-4">Profile</h1>
-        <p className="text-xl text-text-muted">
+    <div className="max-w-4xl mx-auto p-4">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-text-light">Profile</h1>
+        <p className="text-xl text-text-muted mt-2">
           Manage your profile and view your fitness journey
         </p>
       </div>
@@ -133,25 +183,31 @@ export default function Profile() {
               <CardTitle>Profile Information</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-6 mb-6">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={profile.avatar_url} />
-                  <AvatarFallback>{profile.username[0].toUpperCase()}</AvatarFallback>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-6">
+                <Avatar className="h-24 w-24 mx-auto sm:mx-0">
+                  <AvatarImage src={profile?.avatar_url || ''} />
+                  <AvatarFallback>
+                    {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
                 </Avatar>
-                <div>
-                  <h2 className="text-2xl font-bold text-text-light">{profile.username}</h2>
-                  <p className="text-text-muted">Member since {new Date(profile.join_date).toLocaleDateString()}</p>
+                <div className="text-center sm:text-left">
+                  <h2 className="text-2xl font-bold text-text-light">
+                    {profile?.display_name || user.email?.split('@')[0] || 'User'}
+                  </h2>
+                  <p className="text-text-muted">
+                    Member since {new Date(profile?.created_at || Date.now()).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
 
               {isEditing ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
+                    <Label htmlFor="display_name">Display Name</Label>
                     <Input
-                      id="username"
-                      value={formData.username}
-                      onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                      id="display_name"
+                      value={formData.display_name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -162,7 +218,15 @@ export default function Profile() {
                       onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
                     />
                   </div>
-                  <div className="flex justify-end gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="fitness_goal">Fitness Goal</Label>
+                    <Input
+                      id="fitness_goal"
+                      value={formData.fitness_goal}
+                      onChange={(e) => setFormData(prev => ({ ...prev, fitness_goal: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4">
                     <Button variant="outline" onClick={() => setIsEditing(false)}>
                       Cancel
                     </Button>
@@ -175,9 +239,13 @@ export default function Profile() {
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-medium text-text-light mb-2">Bio</h3>
-                    <p className="text-text-muted">{profile.bio || 'No bio yet'}</p>
+                    <p className="text-text-muted">{profile?.bio || 'No bio yet'}</p>
                   </div>
-                  <Button onClick={() => setIsEditing(true)}>
+                  <div>
+                    <h3 className="font-medium text-text-light mb-2">Fitness Goal</h3>
+                    <p className="text-text-muted">{profile?.fitness_goal || 'No fitness goal set'}</p>
+                  </div>
+                  <Button onClick={() => setIsEditing(true)} className="mt-4">
                     Edit Profile
                   </Button>
                 </div>
@@ -196,28 +264,28 @@ export default function Profile() {
                     <Dumbbell className="h-5 w-5 text-primary" />
                     <h3 className="font-medium">Total Workouts</h3>
                   </div>
-                  <p className="text-2xl font-bold text-text-light">{profile.total_workouts}</p>
+                  <p className="text-2xl font-bold text-text-light">{stats.total_workouts}</p>
                 </div>
                 <div className="glass-card p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Activity className="h-5 w-5 text-primary" />
                     <h3 className="font-medium">Total Duration</h3>
                   </div>
-                  <p className="text-2xl font-bold text-text-light">{profile.total_duration} min</p>
+                  <p className="text-2xl font-bold text-text-light">{stats.total_duration} min</p>
                 </div>
                 <div className="glass-card p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Trophy className="h-5 w-5 text-primary" />
                     <h3 className="font-medium">Achievements</h3>
                   </div>
-                  <p className="text-2xl font-bold text-text-light">{profile.achievements_completed}</p>
+                  <p className="text-2xl font-bold text-text-light">{stats.achievements_completed}</p>
                 </div>
                 <div className="glass-card p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Flame className="h-5 w-5 text-primary" />
                     <h3 className="font-medium">Current Streak</h3>
                   </div>
-                  <p className="text-2xl font-bold text-text-light">{profile.streak} days</p>
+                  <p className="text-2xl font-bold text-text-light">{stats.streak} days</p>
                 </div>
               </div>
             </CardContent>
@@ -238,7 +306,7 @@ export default function Profile() {
                   <div>
                     <p className="font-medium">Joined FitMind</p>
                     <p className="text-sm text-text-muted">
-                      {new Date(profile.join_date).toLocaleDateString()}
+                      {new Date(profile?.created_at || Date.now()).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -249,7 +317,7 @@ export default function Profile() {
                   <div>
                     <p className="font-medium">First Workout</p>
                     <p className="text-sm text-text-muted">
-                      {profile.total_workouts > 0 ? 'Completed' : 'Not started yet'}
+                      {stats.total_workouts > 0 ? 'Completed' : 'Not started yet'}
                     </p>
                   </div>
                 </div>
